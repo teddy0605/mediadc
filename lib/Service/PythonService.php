@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace OCA\MediaDC\Service;
 
+use OCP\App\IAppManager;
 use Psr\Log\LoggerInterface;
 
 class PythonService {
@@ -11,6 +12,7 @@ class PythonService {
 		private readonly LoggerInterface $logger,
 		private readonly CPAUtilsService $cpaUtils,
 		private readonly PythonSetupService $pythonSetup,
+		private readonly IAppManager $appManager,
 	) {
 	}
 
@@ -49,8 +51,8 @@ class PythonService {
 			}
 		}
 
-		$appPath = \OC::$SERVERROOT . '/apps/' . $appId;
-		$pythonBin = $appPath . '/.venv/bin/python3';
+		$appPath = $this->appManager->getAppPath($appId);
+		$pythonBin = getenv('MEDIADC_PYTHON') ?: $appPath . '/.venv/bin/python3';
 		$cmd = escapeshellarg($pythonBin) . ' ' . escapeshellarg($appPath . '/' . $scriptName);
 
 		foreach ($scriptParams as $key => $value) {

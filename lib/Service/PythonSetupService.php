@@ -5,12 +5,14 @@ declare(strict_types=1);
 namespace OCA\MediaDC\Service;
 
 use OCA\MediaDC\AppInfo\Application;
+use OCP\App\IAppManager;
 use Psr\Log\LoggerInterface;
 
 class PythonSetupService {
 	public function __construct(
 		private readonly LoggerInterface $logger,
 		private readonly CPAUtilsService $cpaUtils,
+		private readonly IAppManager $appManager,
 	) {
 	}
 
@@ -18,7 +20,11 @@ class PythonSetupService {
 	 * Check if the Python venv is ready to run MediaDC tasks.
 	 */
 	public function isReady(): bool {
-		$appPath = \OC::$SERVERROOT . '/apps/' . Application::APP_ID;
+		$configuredPython = getenv('MEDIADC_PYTHON');
+		if ($configuredPython !== false && $configuredPython !== '') {
+			return is_executable($configuredPython);
+		}
+		$appPath = $this->appManager->getAppPath(Application::APP_ID);
 		$pythonBin = $appPath . '/.venv/bin/python3';
 		return file_exists($pythonBin) && is_executable($pythonBin);
 	}
@@ -41,7 +47,7 @@ class PythonSetupService {
 			return ['success' => false, 'message' => $msg, 'ready' => false];
 		}
 
-		$appPath = \OC::$SERVERROOT . '/apps/' . Application::APP_ID;
+		$appPath = $this->appManager->getAppPath(Application::APP_ID);
 
 		// Check python3 is available
 		exec('which python3 2>/dev/null', $output, $rc);
