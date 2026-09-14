@@ -80,6 +80,20 @@
 							{{ t('mediadc', 'Toggle groups') }}
 						</template>
 					</NcButton>
+					<NcButton v-if="checkedDetailGroups.length > 0"
+						v-tooltip="{content: t('mediadc', 'Delete all files except the largest one'), placement: 'top'}"
+						type="tertiary"
+						:aria-label="t('mediadc', 'Delete files')"
+						:disabled="batchDeleting"
+						@click="deleteCheckedGroupsFiles">
+						<template v-if="!batchDeleting" #icon>
+							<span class="icon-delete material-design-icon" />
+						</template>
+						<template v-else #icon>
+							<NcLoadingIcon :size="20" />
+						</template>
+						{{ t('mediadc', 'Delete files') }}
+					</NcButton>
 					<div v-if="checkedDetailGroups.length > 0" class="batch-editing">
 						{{ n('mediadc', 'Batch actions for %n group', 'Batch actions for %n groups', checkedDetailGroups.length) }}
 						<NcActions placement="top" style="margin-left: 5px;">
@@ -121,18 +135,6 @@
 								icon="icon-close"
 								@click="removeCheckedGroups">
 								{{ n('mediadc', 'Remove group', 'Remove groups', checkedDetailGroups.length) }}
-							</NcActionButton>
-							<NcActionButton v-tooltip="{content: t('mediadc', 'Delete all files except the largest one'), placement: 'left'}"
-								icon="icon-delete"
-								:disabled="batchDeleting"
-								@click="deleteCheckedGroupsFiles">
-								<template v-if="!batchDeleting" #icon>
-									<span class="icon-delete material-design-icon" />
-								</template>
-								<template v-else #icon>
-									<NcLoadingIcon :size="20" />
-								</template>
-								{{ t('mediadc', 'Delete files') }}
 							</NcActionButton>
 						</NcActions>
 					</div>
