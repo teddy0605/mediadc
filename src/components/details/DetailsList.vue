@@ -336,15 +336,6 @@ export default {
 				this.$store.commit('setDetailsFiltered', [])
 			}
 		},
-		openBatchActionsPopup() {
-			document.addEventListener('click', this.toggleBatchActionsPopup)
-		},
-		toggleBatchActionsPopup() {
-			if (this.batchActionsOpened) {
-				document.removeEventListener('click', this.toggleBatchActionsPopup)
-			}
-			this.batchActionsOpened = !this.batchActionsOpened
-		},
 		removeCheckedGroups() {
 			axios.post(generateUrl(`/apps/mediadc/api/v1/tasks/${this.task.id}/details/remove`), { groupIds: this.checkedDetailGroups.map(d => d.group_id) }).then(res => {
 				if (res.data.success) {
@@ -550,9 +541,4 @@ body[data-theme-dark] .task-details-row, body[data-theme-dark] .filters {
 	}
 }
 
-.batch-editing {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-}
 </style>
