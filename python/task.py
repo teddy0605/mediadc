@@ -3,7 +3,7 @@ import threading
 from enum import Enum
 from time import perf_counter, sleep
 
-from nc_py_api import (
+from vendor.nc_py_api import (
     CONFIG,
     FsNodeInfo,
     close_connection,

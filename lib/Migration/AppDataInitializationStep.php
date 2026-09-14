@@ -28,14 +28,13 @@ declare(strict_types=1);
 
 namespace OCA\MediaDC\Migration;
 
-use OCA\Cloud_Py_API\Service\UtilsService as CPAUtilsService;
-use OCA\MediaDC\AppInfo\Application;
 use OCA\MediaDC\Db\Setting;
 
 use OCA\MediaDC\Db\SettingMapper;
 
 use OCA\MediaDC\Migration\data\AppInitialData;
 use OCA\MediaDC\Service\AppDataService;
+use OCA\MediaDC\Service\PythonSetupService;
 use OCA\MediaDC\Service\UtilsService;
 use OCP\App\IAppManager;
 use OCP\Migration\IOutput;
@@ -45,8 +44,8 @@ class AppDataInitializationStep implements IRepairStep {
 	public function __construct(
 		private readonly SettingMapper $settingMapper,
 		private readonly UtilsService $utils,
-		private readonly CPAUtilsService $cpaUtils,
 		private readonly AppDataService $appDataService,
+		private readonly PythonSetupService $pythonSetupService,
 		private readonly IAppManager $appManager,
 	) {
 	}
@@ -76,24 +75,15 @@ class AppDataInitializationStep implements IRepairStep {
 		$output->advance(1, 'Checking for initial data changes and syncing with database');
 		$this->utils->checkForSettingsUpdates($app_data);
 
+		$output->advance(1, 'Setting up Python environment (this may take a few minutes)...');
+		$pythonSetup = $this->pythonSetupService->setup();
+		if (!$pythonSetup['success']) {
+			$output->warning($pythonSetup['message']);
+		}
+
 		$output->advance(1, 'Creating app data folders');
 		$this->appDataService->createAppDataFolder('binaries');
 		$this->appDataService->createAppDataFolder('logs');
-
-		$output->advance(1, 'Downloading app Python binary');
-		$output->warning('This step may take some time');
-		$version = $this->appManager->getAppVersion(Application::APP_ID, false);
-		$url = 'https://github.com/cloud-py-api/mediadc/releases/download/v'
-			. $version
-			. '/' . Application::APP_ID . '_' . $this->cpaUtils->getBinaryName() . '.tar.gz';
-		$result = $this->cpaUtils->downloadPythonBinaryDir(
-			$url, $this->appDataService->getAppDataFolder('binaries'),
-			Application::APP_ID,
-			Application::APP_ID . '_' . $this->cpaUtils->getBinaryName()
-		);
-		if (!isset($result['downloaded']) || !$result['downloaded']) {
-			$output->warning('Failed to download app Python binary');
-		}
 
 		$output->finishProgress();
 	}

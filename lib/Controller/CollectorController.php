@@ -89,8 +89,8 @@ class CollectorController extends Controller {
 	): JSONResponse {
 		$params = [
 			'targetDirectoryIds' => json_decode($targetDirectoryIds),
-			'excludeList' => $excludeList,
-			'collectorSettings' => $collectorSettings,
+			'excludeList' => is_string($excludeList) ? json_decode($excludeList, true) : $excludeList,
+			'collectorSettings' => is_string($collectorSettings) ? json_decode($collectorSettings, true) : $collectorSettings,
 			'name' => $name,
 		];
 		return new JSONResponse($this->service->runTask($params), Http::STATUS_OK);
@@ -108,8 +108,8 @@ class CollectorController extends Controller {
 		$params = [
 			'taskId' => $taskId,
 			'targetDirectoryIds' => json_decode($targetDirectoryIds),
-			'excludeList' => $excludeList,
-			'collectorSettings' => $collectorSettings,
+			'excludeList' => is_string($excludeList) ? json_decode($excludeList, true) : $excludeList,
+			'collectorSettings' => is_string($collectorSettings) ? json_decode($collectorSettings, true) : $collectorSettings,
 			'name' => $name,
 		];
 		return new JSONResponse($this->service->restartTask($params), Http::STATUS_OK);

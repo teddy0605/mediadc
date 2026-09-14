@@ -6,7 +6,7 @@ from json import dumps
 from typing import Any, Optional, Union
 
 import numpy
-from nc_py_api import FsNodeInfo, fs_file_data, fs_sort_by_id
+from vendor.nc_py_api import FsNodeInfo, fs_file_data, fs_sort_by_id
 
 from .db_requests import (
     get_videos_caches,

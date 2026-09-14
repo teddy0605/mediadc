@@ -41,7 +41,7 @@
 			<NcActionButton icon="icon-history" :close-after-click="true" @click="restartTask(task)">
 				{{ getStatusBadge(task) === 'duplicated' ? t('mediadc', 'Start') : t('mediadc', 'Restart') }}
 			</NcActionButton>
-			<NcActionButton icon="icon-pause" :close-after-click="true" @click="terminateTask(task)">
+			<NcActionButton icon="icon-pause" :close-after-click="true" @click="terminateTask(task.id)">
 				{{ t('mediadc', 'Stop') }}
 			</NcActionButton>
 			<NcActionButton v-tooltip="{content: t('mediadc', 'Create copy of the task'), placement: 'left'}"

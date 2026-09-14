@@ -1,4 +1,4 @@
-from nc_py_api import CONFIG
+from vendor.nc_py_api import CONFIG
 
 
 class Tables:

@@ -29,8 +29,8 @@ declare(strict_types=1);
 namespace OCA\MediaDC\Service;
 
 use DOMDocument;
-use OCA\Cloud_Py_API\Service\PythonService;
-use OCA\Cloud_Py_API\Service\UtilsService as CPAUtilsService;
+use OCA\MediaDC\Service\CPAUtilsService;
+use OCA\MediaDC\Service\PythonService;
 use OCA\Files_Sharing\SharedStorage;
 use OCA\MediaDC\AppInfo\Application;
 use OCA\MediaDC\BackgroundJob\QueuedTaskJob;
@@ -107,9 +107,18 @@ class CollectorService {
 		if ($processesRunning < (int)$pyLimitSetting->getValue()) {
 			$createdTask = $this->createCollectorTask($params);
 			if ($createdTask !== null) {
+					// Brief delay ensures DB write is visible to Python worker
+					usleep(1500000);
 				if (json_decode($pythonBinary->getValue())) {
-					$scriptName = 'binaries/' . Application::APP_ID
+					$binaryPath = 'binaries/' . Application::APP_ID
 						. '_' . $this->cpaUtils->getBinaryName() . '/main';
+					$appPath = \OC::$SERVERROOT . '/apps/' . Application::APP_ID;
+					if (!file_exists($appPath . '/' . $binaryPath)) {
+						$this->logger->info('Binary not found, falling back to source Python mode');
+						$scriptName = 'main.py';
+					} else {
+						$scriptName = $binaryPath;
+					}
 				} else {
 					$scriptName = 'main.py';
 				}
@@ -181,8 +190,15 @@ class CollectorService {
 		$processesRunning = $this->tasksMapper->findAllRunning();
 		$pythonBinary = $this->settingsMapper->findByName('python_binary');
 		if (json_decode($pythonBinary->getValue())) {
-			$scriptName = 'binaries/' . Application::APP_ID
+			$binaryPath = 'binaries/' . Application::APP_ID
 				. '_' . $this->cpaUtils->getBinaryName() . '/main';
+					$appPath = \OC::$SERVERROOT . '/apps/' . Application::APP_ID;
+					if (!file_exists($appPath . '/' . $binaryPath)) {
+						$this->logger->info('Binary not found, falling back to source Python mode');
+						$scriptName = 'main.py';
+					} else {
+						$scriptName = $binaryPath;
+					}
 		} else {
 			$scriptName = 'main.py';
 		}
@@ -241,6 +257,8 @@ class CollectorService {
 						// Prepend the cwd that is temp folder
 						$scriptName = $result['path'] . $scriptName;
 					}
+					// Brief delay ensures DB write is visible to Python worker
+					usleep(1500000);
 					$this->pythonService->run(Application::APP_ID,
 						$scriptName, ['-t' => $taskId], true, [
 							'PHP_PATH' => $this->cpaUtils->getPhpInterpreter(),

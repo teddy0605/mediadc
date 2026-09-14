@@ -6,7 +6,7 @@ import PIL
 import pywt
 import scipy
 
-from nc_py_api import __version__ as nc_py_api_version
+from vendor.nc_py_api import __version__ as nc_py_api_version
 
 from ._version import __version__
 from .log import logger as log

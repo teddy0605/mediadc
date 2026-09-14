@@ -1,7 +1,12 @@
 import argparse
+import os
 import sys
 
-from nc_py_api import CONFIG
+# Ensure python/ is in the path so vendor.nc_py_api imports resolve
+_srcdir = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, os.path.join(_srcdir, "python"))
+
+from vendor.nc_py_api import CONFIG
 from numpy import count_nonzero
 from PIL import Image, ImageOps
 

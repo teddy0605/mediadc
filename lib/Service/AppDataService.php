@@ -72,7 +72,7 @@ class AppDataService {
 			try {
 				$this->appData->newFolder($folderName);
 				return true;
-			} catch (NotPermittedException $e) {
+			} catch (NotPermittedException|\RuntimeException $e) {
 				return false;
 			}
 		}
