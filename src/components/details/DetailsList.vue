@@ -81,12 +81,12 @@
 						</template>
 					</NcButton>
 					<NcButton type="tertiary"
-						:aria-label="checkedDetailGroups.length === ((!filtered) ? details.length : detailsFiltered.length) ? t('mediadc', 'Deselect all') : t('mediadc', 'Select all')"
+						:aria-label="checkedDetailGroups.length > 0 && checkedDetailGroups.length === ((!filtered) ? details.length : detailsFiltered.length) ? t('mediadc', 'Deselect all') : t('mediadc', 'Select all')"
 						@click="selectAllGroups">
 						<template #icon>
 							<CheckAll :size="20" />
 						</template>
-						{{ checkedDetailGroups.length === ((!filtered) ? details.length : detailsFiltered.length) ? t('mediadc', 'Deselect all') : t('mediadc', 'Select all') }}
+						{{ checkedDetailGroups.length > 0 && checkedDetailGroups.length === ((!filtered) ? details.length : detailsFiltered.length) ? t('mediadc', 'Deselect all') : t('mediadc', 'Select all') }}
 					</NcButton>
 					<NcButton v-if="((!filtered && details.length > itemsPerPage) || (filtered && detailsFiltered.length > itemsPerPage))"
 						type="tertiary"
@@ -120,18 +120,16 @@
 						</template>
 						{{ t('mediadc', 'Delete files') }}
 					</NcButton>
-					<div v-if="checkedDetailGroups.length > 0" class="batch-editing">
-						{{ n('mediadc', 'Batch actions for %n group', 'Batch actions for %n groups', checkedDetailGroups.length) }}
-						<NcButton v-tooltip="{content: t('mediadc', 'Mark all files in group as resolved'), placement: 'top'}"
-							type="tertiary"
-							:aria-label="n('mediadc', 'Remove group', 'Remove groups', checkedDetailGroups.length)"
-							@click="removeCheckedGroups">
-							<template #icon>
-								<span class="icon-close" />
-							</template>
-							{{ n('mediadc', 'Remove group', 'Remove groups', checkedDetailGroups.length) }}
-						</NcButton>
-					</div>
+					<NcButton v-if="checkedDetailGroups.length > 0"
+						v-tooltip="{content: t('mediadc', 'Mark all files in group as resolved'), placement: 'top'}"
+						type="tertiary"
+						:aria-label="n('mediadc', 'Remove group', 'Remove groups', checkedDetailGroups.length)"
+						@click="removeCheckedGroups">
+						<template #icon>
+							<span class="icon-close" />
+						</template>
+						{{ n('mediadc', 'Remove group', 'Remove groups', checkedDetailGroups.length) }}
+					</NcButton>
 				</div>
 			</div>
 			<div v-if="!filtered">
