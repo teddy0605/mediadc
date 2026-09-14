@@ -29,7 +29,7 @@
 		<div class="details-list-item-title">
 			<NcCheckboxRadioSwitch v-tooltip="{content: t('mediadc', 'Select group'), placement: 'top'}"
 				class="mediadc-checkbox-only batch-checkbox"
-				:checked.sync="checked" />
+				v-model="checked" />
 			<NcButton type="tertiary"
 				class="open-details-btn"
 				:aria-label="t('mediadc', 'Open duplicate group')"
@@ -92,16 +92,16 @@
 			:detail="detail"
 			:files="files"
 			:all-files="allFiles"
-			:loading-files.sync="loadingFiles"
-			:updating.sync="updating"
-			:files-ascending.sync="filesAscending" />
+			v-model:loading-files="loadingFiles"
+			v-model:updating="updating"
+			v-model:files-ascending="filesAscending" />
 	</div>
 </template>
 
 <script>
 import axios from '@nextcloud/axios'
 import { generateUrl } from '@nextcloud/router'
-import { showError, showSuccess, showWarning } from '@nextcloud/dialogs'
+import { getDialogBuilder, showError, showSuccess, showWarning } from '@nextcloud/dialogs'
 import { subscribe, unsubscribe, emit } from '@nextcloud/event-bus'
 import {
 	NcCheckboxRadioSwitch,
@@ -112,7 +112,7 @@ import {
 
 import { mapGetters } from 'vuex'
 
-import Formats from '../../mixins/Formats.js'
+import { formatBytes, parseUnixTimestamp, getStatusBadge, parseTargetMtype } from '../../composables/useFormats.js'
 import DetailsGroupList from './DetailsGroupList.vue'
 
 export default {
@@ -124,7 +124,6 @@ export default {
 		NcCheckboxRadioSwitch,
 		DetailsGroupList,
 	},
-	mixins: [Formats],
 	props: {
 		detail: {
 			type: Object,
@@ -217,13 +216,17 @@ export default {
 		subscribe('openGroup', this.openGroup)
 		subscribe('toggleGroup', this.toggleGroup)
 	},
-	beforeDestroy() {
+	beforeUnmount() {
 		unsubscribe('updateGroupFilesPagination', this.updateFilesPagination)
 		unsubscribe('deselectGroups', this.deselect)
 		unsubscribe('openGroup', this.openGroup)
 		unsubscribe('toggleGroup', this.toggleGroup)
 	},
 	methods: {
+		formatBytes,
+		parseUnixTimestamp,
+		getStatusBadge,
+		parseTargetMtype,
 		openDetailFiles(detail) {
 			if (!this.opened) {
 				if (this.files === undefined || this.files.length === 0) {
@@ -280,15 +283,20 @@ export default {
 			}
 			return paginatedFiles
 		},
-		removeTaskDetail(detail) {
+		async removeTaskDetail(detail) {
 			if (this.deleteFileConfirmation) {
-				const self = this
-				OC.dialogs.confirm(this.t('mediadc', 'Are you sure you want to remove this group without deleting files?'),
-					this.t('mediadc', 'Confirm group removal'), function(success) {
-						if (success) {
-							self._removeTaskDetail(detail)
-						}
-					})
+				const confirmed = await new Promise(resolve => {
+					getDialogBuilder(this.t('mediadc', 'Confirm group removal'))
+						.setText(this.t('mediadc', 'Are you sure you want to remove this group without deleting files?'))
+						.setSeverity('warning')
+						.addButton({ label: this.t('mediadc', 'Cancel'), callback: () => resolve(false) })
+						.addButton({ label: this.t('mediadc', 'Remove'), type: 'error', callback: () => resolve(true) })
+						.build()
+						.show()
+				})
+				if (confirmed) {
+					this._removeTaskDetail(detail)
+				}
 			} else {
 				this._removeTaskDetail(detail)
 			}

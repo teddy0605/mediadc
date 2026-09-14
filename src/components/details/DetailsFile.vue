@@ -69,10 +69,13 @@
 			<span :class="{ filename: !showFullFilePath, filepath: showFullFilePath }" :title="file.filepath">{{ !showFullFilePath ? file.filename : file.filepath }}</span>
 			<span class="owner">{{ file.fileowner }}</span>
 			<span class="size" :title="file.filesize + ' B'">{{ formatBytes(Number(file.filesize)) }}</span>
+			<span v-if="file.albums" class="albums" :title="file.albums">
+				{{ file.albums }}
+			</span>
 			<div class="actions" style="display: flex;">
 				<NcCheckboxRadioSwitch v-tooltip="{ content: t('mediadc', 'Select file'), placement: 'top' }"
 					class="mediadc-checkbox-only"
-					:checked.sync="checked" />
+					v-model="checked" />
 				<NcButton v-tooltip="{ content: t('mediadc', 'Delete file'), placement: 'top' }"
 					type="tertiary"
 					:aria-label="t('mediadc', 'Delete file')"
@@ -89,8 +92,46 @@
 						<span class="icon-close" />
 					</template>
 				</NcButton>
+				<NcButton v-tooltip="{ content: t('mediadc', 'Add to album'), placement: 'top' }"
+					type="tertiary"
+					:aria-label="t('mediadc', 'Add to album')"
+					@click="openAlbumDialog">
+					<template #icon>
+						<AlbumIcon :size="20" />
+					</template>
+				</NcButton>
 			</div>
 		</div>
+		<NcDialog v-if="albumDialogOpen"
+			:name="t('mediadc', 'Add to album')"
+			size="small"
+			@update:open="onAlbumDialogOpenUpdate">
+			<div class="album-picker">
+				<p v-if="loadingAlbums" class="album-picker__hint">
+					{{ t('mediadc', 'Loading albums…') }}
+				</p>
+				<p v-else-if="albumOptions.length === 0" class="album-picker__hint">
+					{{ t('mediadc', 'No albums available. Create one in the Photos app first.') }}
+				</p>
+				<NcSelect v-else
+					v-model="selectedAlbum"
+					:options="albumOptions"
+					:clearable="false"
+					:placeholder="t('mediadc', 'Select an album')"
+					label="name"
+					track-by="album_id" />
+			</div>
+			<template #actions>
+				<NcButton type="secondary" @click="albumDialogOpen = false">
+					{{ t('mediadc', 'Cancel') }}
+				</NcButton>
+				<NcButton type="primary"
+					:disabled="!selectedAlbum || addingToAlbum"
+					@click="confirmAddFileToAlbum">
+					{{ t('mediadc', 'Add') }}
+				</NcButton>
+			</template>
+		</NcDialog>
 	</div>
 </template>
 
@@ -98,22 +139,25 @@
 import axios from '@nextcloud/axios'
 import { getCurrentUser } from '@nextcloud/auth'
 import { emit, subscribe, unsubscribe } from '@nextcloud/event-bus'
-import { showError, showMessage, showWarning } from '@nextcloud/dialogs'
+import { getDialogBuilder, showError, showMessage, showSuccess, showWarning } from '@nextcloud/dialogs'
 import { generateRemoteUrl, generateUrl } from '@nextcloud/router'
 
-import { NcButton, NcCheckboxRadioSwitch } from '@nextcloud/vue'
+import { NcButton, NcCheckboxRadioSwitch, NcDialog, NcSelect } from '@nextcloud/vue'
+import AlbumIcon from 'vue-material-design-icons/Album.vue'
 
 import { mapGetters } from 'vuex'
 
-import Formats from '../../mixins/Formats.js'
+import { formatBytes, parseUnixTimestamp, getStatusBadge, parseTargetMtype } from '../../composables/useFormats.js'
 
 export default {
 	name: 'DetailsFile',
 	components: {
 		NcButton,
 		NcCheckboxRadioSwitch,
+		NcDialog,
+		NcSelect,
+		AlbumIcon,
 	},
-	mixins: [Formats],
 	props: {
 		file: {
 			type: Object,
@@ -141,6 +185,11 @@ export default {
 			loaded: false,
 			checked: false,
 			updating: false,
+			albumDialogOpen: false,
+			loadingAlbums: false,
+			addingToAlbum: false,
+			albumOptions: [],
+			selectedAlbum: null,
 		}
 	},
 	computed: {
@@ -183,10 +232,14 @@ export default {
 		this.checked = fileIndexChecked !== -1
 		subscribe('deselectFiles', this.deselect)
 	},
-	beforeDestroy() {
+	beforeUnmount() {
 		unsubscribe('deselectFiles', this.deselect)
 	},
 	methods: {
+		formatBytes,
+		parseUnixTimestamp,
+		getStatusBadge,
+		parseTargetMtype,
 		openFile(file) {
 			const filesList = this.files.map(file => ({
 				basename: file.filename,
@@ -208,15 +261,20 @@ export default {
 		onLoad() {
 			this.loaded = true
 		},
-		deleteGroupFile(file) {
+		async deleteGroupFile(file) {
 			if (this.deleteFileConfirmation) {
-				const self = this
-				OC.dialogs.confirm(this.t('mediadc', 'Are you sure you want to delete this file?'),
-					this.t('mediadc', 'Confirm file deletion'), function(success) {
-						if (success) {
-							self._deleteGroupFile(file)
-						}
-					})
+				const confirmed = await new Promise(resolve => {
+					getDialogBuilder(this.t('mediadc', 'Confirm file deletion'))
+						.setText(this.t('mediadc', 'Are you sure you want to delete this file?'))
+						.setSeverity('warning')
+						.addButton({ label: this.t('mediadc', 'Cancel'), callback: () => resolve(false) })
+						.addButton({ label: this.t('mediadc', 'Delete'), type: 'error', callback: () => resolve(true) })
+						.build()
+						.show()
+				})
+				if (confirmed) {
+					this._deleteGroupFile(file)
+				}
 			} else {
 				this._deleteGroupFile(file)
 			}
@@ -294,6 +352,60 @@ export default {
 			if (this.checked && filesToDeselect.map(f => f.fileid).includes(this.file.fileid)) {
 				this.checked = false
 			}
+		},
+		openAlbumDialog() {
+			this.selectedAlbum = null
+			this.albumDialogOpen = true
+			this.loadingAlbums = true
+			axios.get(generateUrl('/apps/mediadc/api/v1/albums'))
+				.then(res => {
+					this.albumOptions = res.data?.albums ?? []
+				})
+				.catch(err => {
+					console.debug(err)
+					this.albumOptions = []
+					showError(this.t('mediadc', 'Could not load albums'))
+				})
+				.finally(() => {
+					this.loadingAlbums = false
+				})
+		},
+		onAlbumDialogOpenUpdate(open) {
+			if (!open) {
+				this.albumDialogOpen = false
+			}
+		},
+		confirmAddFileToAlbum() {
+			if (!this.selectedAlbum) {
+				return
+			}
+			this.addingToAlbum = true
+			const albumId = this.selectedAlbum.album_id
+			const albumName = this.selectedAlbum.name
+			axios.post(generateUrl(`/apps/mediadc/api/v1/tasks/${this.detail.task_id}/files/${this.detail.group_id}/${this.file.fileid}/album/${albumId}`))
+				.then(res => {
+					if (res.data.success) {
+						showSuccess(this.t('mediadc', 'Added to album "{name}"', { name: albumName }))
+						this.albumDialogOpen = false
+					} else if (res.data.already_in_album) {
+						showMessage(this.t('mediadc', 'File is already in this album'))
+					} else if (res.data.album_not_found) {
+						showError(this.t('mediadc', 'Album not found'))
+					} else if (res.data.photos_disabled || res.data.photos_unavailable) {
+						showError(this.t('mediadc', 'Photos app is not available'))
+					} else if (res.data.not_permitted) {
+						showError(this.t('mediadc', 'Not enough permissions to add the file to this album'))
+					} else {
+						showError(this.t('mediadc', 'Could not add file to album'))
+					}
+				})
+				.catch(err => {
+					console.debug(err)
+					showError(this.t('mediadc', 'Could not add file to album'))
+				})
+				.finally(() => {
+					this.addingToAlbum = false
+				})
 		},
 	},
 }
@@ -378,5 +490,24 @@ body[data-theme-dark] .placeholder {
 	border-bottom: 1px solid var(--color-border-dark);
 	padding-bottom: 5px;
 	margin-bottom: 5px;
+}
+
+.albums {
+	width: 100%;
+	overflow-x: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	font-size: 0.85em;
+	color: var(--color-text-maxcontrast);
+}
+
+.album-picker {
+	padding: 0 12px 12px;
+	min-height: 60px;
+}
+
+.album-picker__hint {
+	color: var(--color-text-maxcontrast);
+	margin: 8px 0;
 }
 </style>

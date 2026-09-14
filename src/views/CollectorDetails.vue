@@ -24,8 +24,8 @@
 
 <template>
 	<div v-if="!loading" class="container">
-		<TasksEdit v-if="editingTask" :opened.sync="editingTask" />
-		<DetailsExport v-if="exporting" :opened.sync="exporting" :task="task" />
+		<TasksEdit v-if="editingTask" v-model:opened="editingTask" />
+		<DetailsExport v-if="exporting" v-model:opened="exporting" :task="task" />
 		<div class="task-details">
 			<div class="task-details-heading">
 				<h2>
@@ -174,19 +174,16 @@
 import axios from '@nextcloud/axios'
 import { getCurrentUser } from '@nextcloud/auth'
 import { subscribe, unsubscribe } from '@nextcloud/event-bus'
-import { showSuccess, showError, showWarning, showMessage } from '@nextcloud/dialogs'
+import { getDialogBuilder, showSuccess, showError, showWarning, showMessage } from '@nextcloud/dialogs'
 import { generateUrl } from '@nextcloud/router'
 import { mapActions, mapGetters } from 'vuex'
 
 import DetailsList from '../components/details/DetailsList.vue'
-import Formats from '../mixins/Formats.js'
+import { formatBytes, parseUnixTimestamp, getStatusBadge, parseTargetMtype } from '../composables/useFormats.js'
 import TasksEdit from '../components/tasks/TasksEdit.vue'
 import DetailsExport from '../components/details/DetailsExport.vue'
 
-import NcActions from '@nextcloud/vue/dist/Components/NcActions.js'
-import NcActionButton from '@nextcloud/vue/dist/Components/NcActionButton.js'
-import NcProgressBar from '@nextcloud/vue/dist/Components/NcProgressBar.js'
-import NcButton from '@nextcloud/vue/dist/Components/NcButton.js'
+import { NcActions, NcActionButton, NcProgressBar, NcButton } from '@nextcloud/vue'
 import ContentCopy from 'vue-material-design-icons/ContentCopy.vue'
 import FileExportOutline from 'vue-material-design-icons/FileExportOutline.vue'
 
@@ -203,7 +200,6 @@ export default {
 		ContentCopy,
 		FileExportOutline,
 	},
-	mixins: [Formats],
 	props: {
 		rootTitle: {
 			type: String,
@@ -220,6 +216,7 @@ export default {
 			collapsedStatus: false,
 			editingTask: false,
 			exporting: false,
+			pendingSince: null,
 		}
 	},
 	computed: {
@@ -242,19 +239,19 @@ export default {
 	beforeMount() {
 		this.$emit('update:loading', true)
 		this.tasksUpdater = setInterval(this._getTaskDetails, 3000)
-		this.getTaskDetails().then((res) => {
+		this.getTaskDetails(this.$route.params.taskId).then((res) => {
 			if (this.getStatusBadge(res.data.collectorTask) === 'finished' || this.getStatusBadge(res.data.collectorTask) === 'duplicated') {
 				clearInterval(this.tasksUpdater)
 			}
 			this.$emit('update:loading', false)
 		})
-		this.getTaskInfo()
+		this.getTaskInfo(this.$route.params.taskId)
 		subscribe('restartTask', this.onRestartTaskEvent)
-		subscribe('updateTaskInfo', this.getDetailFilesTotalSize)
+		subscribe('updateTaskInfo', this._getDetailFilesTotalSize)
 	},
-	beforeDestroy() {
+	beforeUnmount() {
 		clearInterval(this.tasksUpdater)
-		unsubscribe('updateTaskInfo', this.getDetailFilesTotalSize)
+		unsubscribe('updateTaskInfo', this._getDetailFilesTotalSize)
 		unsubscribe('restartTask', this.onRestartTaskEvent)
 		this.$store.commit('setTask', {})
 		this.$store.commit('setTaskInfo', { exclude_directories: [], target_directories: [] })
@@ -262,6 +259,10 @@ export default {
 		this.$store.commit('setDetailsInfo', { filestotal: 0, filessize: 0 })
 	},
 	methods: {
+		formatBytes,
+		parseUnixTimestamp,
+		getStatusBadge,
+		parseTargetMtype,
 		...mapActions([
 			'getTaskDetails',
 			'getTaskInfo',
@@ -279,11 +280,26 @@ export default {
 			}
 		},
 		_getTaskDetails() {
-			this.getTaskDetails().then(res => {
-				if (this.getStatusBadge(res.data.collectorTask) === 'finished' || this.getStatusBadge(res.data.collectorTask) === 'terminated' || this.getStatusBadge(res.data.collectorTask) === 'error') {
+			this.getTaskDetails(this.$route.params.taskId).then(res => {
+				const status = this.getStatusBadge(res.data.collectorTask)
+				if (status === 'finished' || status === 'terminated' || status === 'error') {
 					clearInterval(this.tasksUpdater)
+					this.pendingSince = null
+				} else if (status === 'pending') {
+					if (this.pendingSince === null) {
+						this.pendingSince = Date.now()
+					} else if (Date.now() - this.pendingSince > 30000) {
+						showWarning(this.t('mediadc', 'Task has been pending for a while. It may have failed to start. Check the server logs for errors.'))
+						clearInterval(this.tasksUpdater)
+						this.pendingSince = null
+					}
+				} else {
+					this.pendingSince = null
 				}
 			})
+		},
+		_getDetailFilesTotalSize() {
+			this.getDetailFilesTotalSize(this.$route.params.taskId)
 		},
 		restartTask(task) {
 			if (this.isValidUser) {
@@ -306,7 +322,7 @@ export default {
 						},
 					}).then(res => {
 						if (res.data.success) {
-							this.getTaskDetails()
+							this.getTaskDetails(this.$route.params.taskId)
 							this.$store.commit('setDetailsInfo', { filestotal: 0, filessize: 0 })
 							this.tasksUpdater = setInterval(this._getTaskDetails, 3000)
 							showSuccess(this.t('mediadc', 'Task successfully restarted with previous settings!'))
@@ -328,20 +344,23 @@ export default {
 				showWarning(this.t('mediadc', 'You are not allowed to restart this task'))
 			}
 		},
-		deleteTask(task) {
+		async deleteTask(task) {
 			if (this.isValidUser) {
-				const self = this
-				OC.dialogs.confirm(this.t('mediadc', 'Are sure you want to delete this task?'),
-					this.t('mediadc', 'Confirm task deletion'),
-					function(success) {
-						if (success) {
-							self.$store.dispatch('deleteTask', task).then(() => {
-								self.$router.push({ name: 'collector' })
-								showSuccess(self.t('mediadc', 'Task successfully deleted'))
-							})
-						}
-					},
-				)
+				const confirmed = await new Promise(resolve => {
+					getDialogBuilder(this.t('mediadc', 'Confirm task deletion'))
+						.setText(this.t('mediadc', 'Are sure you want to delete this task?'))
+						.setSeverity('warning')
+						.addButton({ label: this.t('mediadc', 'Cancel'), callback: () => resolve(false) })
+						.addButton({ label: this.t('mediadc', 'Delete'), type: 'error', callback: () => resolve(true) })
+						.build()
+						.show()
+				})
+				if (confirmed) {
+					this.$store.dispatch('deleteTask', task).then(() => {
+						this.$router.push({ name: 'collector' })
+						showSuccess(this.t('mediadc', 'Task successfully deleted'))
+					})
+				}
 			} else {
 				showWarning(this.t('mediadc', 'You are not allowed to delete this task'))
 			}
@@ -369,8 +388,8 @@ export default {
 			return '#'
 		},
 		onRestartTaskEvent() {
-			this.getTaskInfo()
-			this.getTaskDetails()
+			this.getTaskInfo(this.$route.params.taskId)
+			this.getTaskDetails(this.$route.params.taskId)
 			this.$store.commit('setDetailsInfo', { filestotal: 0, filessize: 0 })
 			clearInterval(this.tasksUpdater)
 			this.tasksUpdater = setInterval(this._getTaskDetails, 3000)

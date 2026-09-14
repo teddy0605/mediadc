@@ -79,7 +79,7 @@
 				:file="file"
 				:files="files"
 				:all-files="allFiles"
-				:checked-files.sync="checkedFiles"
+				v-model:checked-files="checkedFiles"
 				:detail="detail" />
 		</div>
 		<div v-else-if="filteredFiles.length > 0" class="details-group-files">
@@ -88,7 +88,7 @@
 				:file="file"
 				:files="files"
 				:all-files="allFiles"
-				:checked-files.sync="checkedFiles"
+				v-model:checked-files="checkedFiles"
 				:detail="detail" />
 		</div>
 		<div v-else class="details-group-files">
@@ -111,7 +111,7 @@ import { emit } from '@nextcloud/event-bus'
 
 import { NcActions, NcActionButton, NcButton } from '@nextcloud/vue'
 
-import Formats from '../../mixins/Formats.js'
+import { formatBytes, parseUnixTimestamp, getStatusBadge, parseTargetMtype } from '../../composables/useFormats.js'
 import DetailsFile from './DetailsFile.vue'
 
 export default {
@@ -122,7 +122,6 @@ export default {
 		NcActionButton,
 		NcButton,
 	},
-	mixins: [Formats],
 	props: {
 		files: {
 			type: Array,
@@ -179,6 +178,10 @@ export default {
 		},
 	},
 	methods: {
+		formatBytes,
+		parseUnixTimestamp,
+		getStatusBadge,
+		parseTargetMtype,
 		openBatchActionsPopup() {
 			document.addEventListener('click', this.toggleBatchActionsPopup)
 		},

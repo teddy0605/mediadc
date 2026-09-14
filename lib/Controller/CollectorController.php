@@ -30,6 +30,7 @@ namespace OCA\MediaDC\Controller;
 
 use OCA\MediaDC\AppInfo\Application;
 use OCA\MediaDC\Db\CollectorTask;
+use OCA\MediaDC\Service\AlbumService;
 use OCA\MediaDC\Service\CollectorService;
 use OCP\AppFramework\Controller;
 use OCP\AppFramework\Http;
@@ -45,6 +46,7 @@ class CollectorController extends Controller {
 	public function __construct(
 		IRequest $request,
 		private readonly CollectorService $service,
+		private readonly AlbumService $albumService,
 	) {
 		parent::__construct(Application::APP_ID, $request);
 	}
@@ -169,10 +171,8 @@ class CollectorController extends Controller {
 		throw new OCSBadRequestException('Bad request. Requested export format is not supported.');
 	}
 
-	/**
-	 * @NoAdminRequired
-	 * @NoCSRFRequired
-	 */
+	#[NoAdminRequired]
+	#[NoCSRFRequired]
 	public function deleteTask(int $taskId): JSONResponse {
 		/** @var CollectorTask */
 		$deletedTask = $this->service->delete($taskId);
@@ -183,20 +183,16 @@ class CollectorController extends Controller {
 		], Http::STATUS_OK);
 	}
 
-	/**
-	 * @NoAdminRequired
-	 * @NoCSRFRequired
-	 */
+	#[NoAdminRequired]
+	#[NoCSRFRequired]
 	public function deleteTaskDetail(int $taskId, int $groupId): JSONResponse {
 		return new JSONResponse([
 			'success' => $this->service->deleteTaskDetail($taskId, $groupId) > 0,
 		], Http::STATUS_OK);
 	}
 
-	/**
-	 * @NoAdminRequired
-	 * @NoCSRFRequired
-	 */
+	#[NoAdminRequired]
+	#[NoCSRFRequired]
 	public function terminateTask(int $taskId): JSONResponse {
 		/** @var CollectorTask */
 		$terminatedTask = $this->service->terminate($taskId);
@@ -207,10 +203,8 @@ class CollectorController extends Controller {
 		], Http::STATUS_OK);
 	}
 
-	/**
-	 * @NoAdminRequired
-	 * @NoCSRFRequired
-	 */
+	#[NoAdminRequired]
+	#[NoCSRFRequired]
 	public function duplicateTask(int $taskId): JSONResponse {
 		$duplicatedTask = $this->service->duplicate($taskId);
 		return new JSONResponse([
@@ -219,64 +213,60 @@ class CollectorController extends Controller {
 		], Http::STATUS_OK);
 	}
 
-	/**
-	 * @NoAdminRequired
-	 * @NoCSRFRequired
-	 */
+	#[NoAdminRequired]
+	#[NoCSRFRequired]
 	public function getDetailGroupFilesInfo(int $taskId, int $groupId, bool $filesizeAscending = false): JSONResponse {
 		return new JSONResponse($this->service->getDetailGroupFilesInfo($taskId, $groupId, $filesizeAscending), Http::STATUS_OK);
 	}
 
-	/**
-	 * @NoAdminRequired
-	 * @NoCSRFRequired
-	 *
-	 * @param int $taskId
-	 * @param int $groupId
-	 */
+	#[NoAdminRequired]
+	#[NoCSRFRequired]
 	public function getDetailFilesTotalSize(int $taskId): JSONResponse {
 		return new JSONResponse($this->service->getDetailFilesTotalSize(intval($taskId)), Http::STATUS_OK);
 	}
 
-	/**
-	 * @NoAdminRequired
-	 * @NoCSRFRequired
-	 */
+	#[NoAdminRequired]
+	#[NoCSRFRequired]
 	public function deleteTaskDetailFile(int $taskId, int $groupId, int $fileId): JSONResponse {
 		return new JSONResponse($this->service->deleteTaskDetailFile($taskId, $groupId, $fileId), Http::STATUS_OK);
 	}
 
 	// Batch editing actions
 
-	/**
-	 * @NoAdminRequired
-	 * @NoCSRFRequired
-	 */
+	#[NoAdminRequired]
+	#[NoCSRFRequired]
 	public function removeTaskDetailGroups(int $taskId, array $groupIds): JSONResponse {
 		return new JSONResponse($this->service->removeTaskDetailGroups($taskId, $groupIds), Http::STATUS_OK);
 	}
 
-	/**
-	 * @NoAdminRequired
-	 * @NoCSRFRequired
-	 */
+	#[NoAdminRequired]
+	#[NoCSRFRequired]
 	public function deleteTaskDetailGroupsFiles(int $taskId, array $groupIds): JSONResponse {
 		return new JSONResponse($this->service->deleteTaskDetailGroupsFiles($taskId, $groupIds), Http::STATUS_OK);
 	}
 
-	/**
-	 * @NoAdminRequired
-	 * @NoCSRFRequired
-	 */
+	#[NoAdminRequired]
+	#[NoCSRFRequired]
 	public function deleteTaskDetailFiles(int $taskId, int $groupId, array $fileIds): JSONResponse {
 		return new JSONResponse($this->service->deleteTaskDetailFiles($taskId, $groupId, $fileIds), Http::STATUS_OK);
 	}
 
-	/**
-	 * @NoAdminRequired
-	 * @NoCSRFRequired
-	 */
+	#[NoAdminRequired]
+	#[NoCSRFRequired]
 	public function removeTaskDetailFiles(int $taskId, int $groupId, array $fileIds): JSONResponse {
 		return new JSONResponse($this->service->removeTaskDetailFiles($taskId, $groupId, $fileIds), Http::STATUS_OK);
+	}
+
+	#[NoAdminRequired]
+	#[NoCSRFRequired]
+	public function getUserAlbums(): JSONResponse {
+		return new JSONResponse(['albums' => $this->albumService->getAlbumsForUser()], Http::STATUS_OK);
+	}
+
+	#[NoAdminRequired]
+	#[NoCSRFRequired]
+	public function addFileToAlbum(int $taskId, int $groupId, int $fileId, int $albumId): JSONResponse {
+		unset($taskId, $groupId);
+		return new JSONResponse($this->albumService->addFileToAlbum($albumId, $fileId), Http::STATUS_OK);
 	}
 }

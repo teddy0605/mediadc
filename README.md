@@ -71,9 +71,9 @@ All relevant, compatible fixes and updates from that review were consolidated
 here, including the Nextcloud 34-compatible source-Python runtime,
 worker-startup and request-handling fixes, object-storage support, settings
 migration improvements, and official Nextcloud Docker compatibility. Redundant
-or Nextcloud-33-only changes were excluded. The Photos album feature from the
-Marc Benedi fork remains separately tracked for compatibility validation before
-adoption.
+or Nextcloud-33-only changes were excluded. The Photos album integration from
+the Marc Benedi fork is included, with graceful handling when the Photos app or
+its internal album mapper is unavailable.
 
 Local compatibility fixes added in this pass:
 
@@ -83,7 +83,8 @@ Local compatibility fixes added in this pass:
   image.
 - Pillow is compatible with the deployment image's Python 3.13 runtime.
 
-The reference deployment runs MediaDC **0.5.2** on Nextcloud **34.0.4**.
+The reference deployment is being updated to MediaDC **0.6.5** on Nextcloud
+**34.0.4**.
 
 ## What changed from the original
 

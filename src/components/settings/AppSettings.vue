@@ -35,7 +35,7 @@
 					{{ t('mediadc', 'Groups per page') }}
 				</label>
 				<NcInputField id="details-list-items-per-page"
-					:value.sync="detailsListItemPerPage"
+					v-model="detailsListItemPerPage"
 					:label-outside="true"
 					type="number"
 					min="1"
@@ -46,7 +46,7 @@
 					{{ t('mediadc', 'Items per group') }}
 				</label>
 				<NcInputField id="group-items-per-page"
-					:value.sync="groupItemsPerPage"
+					v-model="groupItemsPerPage"
 					:label-outside="true"
 					type="number"
 					min="1"
@@ -63,17 +63,17 @@
 					:label-outside="true" />
 			</div>
 			<div class="app-setting">
-				<NcCheckboxRadioSwitch :checked.sync="deleteFileConfirmation">
+				<NcCheckboxRadioSwitch v-model="deleteFileConfirmation">
 					{{ t('mediadc', 'Delete file confirmation') }}
 				</NcCheckboxRadioSwitch>
 			</div>
 			<div class="app-setting">
-				<NcCheckboxRadioSwitch :checked.sync="autoOpenNextGroup">
+				<NcCheckboxRadioSwitch v-model="autoOpenNextGroup">
 					{{ t('mediadc', 'Auto open next group') }}
 				</NcCheckboxRadioSwitch>
 			</div>
 			<div class="app-setting">
-				<NcCheckboxRadioSwitch :checked.sync="showFullFilePath">
+				<NcCheckboxRadioSwitch v-model="showFullFilePath">
 					{{ t('mediadc', 'Show full file path') }}
 				</NcCheckboxRadioSwitch>
 			</div>
