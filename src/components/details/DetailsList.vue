@@ -402,12 +402,11 @@ export default {
 			if (this.checkedDetailGroups.length === _details.length) {
 				this._deselectAllGroups(_details)
 			} else {
-				for (const detail of _details) {
-					const detailIndex = this.checkedDetailGroups.findIndex(d => d.group_id === detail.group_id)
-					if (detailIndex === -1) {
-						this.checkedDetailGroups.push(detail)
-					}
-				}
+				const checkedGroupIds = new Set(this.checkedDetailGroups.map(detail => detail.group_id))
+				this.checkedDetailGroups = [
+					...this.checkedDetailGroups,
+					..._details.filter(detail => !checkedGroupIds.has(detail.group_id)),
+				]
 			}
 		},
 		selectAllGroupsOnPage() {
@@ -427,7 +426,7 @@ export default {
 				for (const detail of _details[this.page]) {
 					const detailIndex = this.checkedDetailGroups.findIndex(d => d.group_id === detail.group_id)
 					if (detailIndex === -1) {
-						this.checkedDetailGroups.push(detail)
+						this.checkedDetailGroups = [...this.checkedDetailGroups, detail]
 					}
 				}
 			}
