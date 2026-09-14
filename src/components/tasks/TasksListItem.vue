@@ -90,13 +90,15 @@ export default {
 			'tasks',
 		]),
 		listItemTitle() {
-			const taskName = this.task.name !== '' && this.task.name !== null ? this.task.name + ' - ' : ''
-			return `${taskName}${this.parseTargetMtype(this.task)}
-				${this.task.files_scanned !== this.task.files_total ? this.task.files_scanned + '/' : ''}${this.task.files_total} ${this.n('mediadc', 'file', 'files', this.task.files_total)}
-				(${this.formatBytes(Number(this.task.files_total_size))})`
+			return this.task.name !== '' && this.task.name !== null
+				? this.task.name
+				: this.t('mediadc', 'Unnamed task')
 		},
 		listItemDetails() {
-			return `${this.parseUnixTimestamp(this.task.created_time)}
+			const files = `${this.parseTargetMtype(this.task)}
+				${this.task.files_scanned !== this.task.files_total ? this.task.files_scanned + '/' : ''}${this.task.files_total} ${this.n('mediadc', 'file', 'files', this.task.files_total)}
+				(${this.formatBytes(Number(this.task.files_total_size))})`
+			return `${files} - ${this.parseUnixTimestamp(this.task.created_time)}
 				${Number(this.task.finished_time) > 0 ? ' - ' + this.parseUnixTimestamp(this.task.finished_time) : ''}`
 		},
 	},
