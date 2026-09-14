@@ -49,6 +49,7 @@ use OCP\Files\IRootFolder;
 use OCP\Files\Node;
 use OCP\Files\NotFoundException;
 use OCP\Files\NotPermittedException;
+use OCP\App\IAppManager;
 use OCP\IConfig;
 use OCP\IL10N;
 use OCP\IPreview;
@@ -84,6 +85,7 @@ class CollectorService {
 		private readonly CPAUtilsService $cpaUtils,
 		private readonly IL10N $l10n,
 		IConfig $config,
+		private readonly IAppManager $appManager,
 	) {
 		if ($userId !== null) {
 			$this->userFolder = $rootFolder->getUserFolder($this->userId);
@@ -112,7 +114,7 @@ class CollectorService {
 				if (json_decode($pythonBinary->getValue())) {
 					$binaryPath = 'binaries/' . Application::APP_ID
 						. '_' . $this->cpaUtils->getBinaryName() . '/main';
-					$appPath = \OC::$SERVERROOT . '/apps/' . Application::APP_ID;
+					$appPath = $this->appManager->getAppPath(Application::APP_ID);
 					if (!file_exists($appPath . '/' . $binaryPath)) {
 						$this->logger->info('Binary not found, falling back to source Python mode');
 						$scriptName = 'main.py';
@@ -192,7 +194,7 @@ class CollectorService {
 		if (json_decode($pythonBinary->getValue())) {
 			$binaryPath = 'binaries/' . Application::APP_ID
 				. '_' . $this->cpaUtils->getBinaryName() . '/main';
-					$appPath = \OC::$SERVERROOT . '/apps/' . Application::APP_ID;
+					$appPath = $this->appManager->getAppPath(Application::APP_ID);
 					if (!file_exists($appPath . '/' . $binaryPath)) {
 						$this->logger->info('Binary not found, falling back to source Python mode');
 						$scriptName = 'main.py';
