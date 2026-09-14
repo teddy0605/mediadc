@@ -80,6 +80,32 @@
 							{{ t('mediadc', 'Toggle groups') }}
 						</template>
 					</NcButton>
+					<NcButton type="tertiary"
+						:aria-label="checkedDetailGroups.length === ((!filtered) ? details.length : detailsFiltered.length) ? t('mediadc', 'Deselect all') : t('mediadc', 'Select all')"
+						@click="selectAllGroups">
+						<template #icon>
+							<CheckAll :size="20" />
+						</template>
+						{{ checkedDetailGroups.length === ((!filtered) ? details.length : detailsFiltered.length) ? t('mediadc', 'Deselect all') : t('mediadc', 'Select all') }}
+					</NcButton>
+					<NcButton v-if="((!filtered && details.length > itemsPerPage) || (filtered && detailsFiltered.length > itemsPerPage))"
+						type="tertiary"
+						:aria-label="t('mediadc', 'Select all on page')"
+						@click="selectAllGroupsOnPage">
+						<template #icon>
+							<CheckUnderline :size="20" />
+						</template>
+						{{ checkedDetailGroupsIntersect.length === ((!filtered) ? ((!sortGroups) ? paginatedDetails[page].length : paginatedSortedDetails[page].length) : ((!sortGroups) ? paginatedDetailsFiltered[page].length : paginatedDetailsFilteredSorted[page].length)) ? t('mediadc', 'Deselect all on page') : t('mediadc', 'Select all on page') }}
+					</NcButton>
+					<NcButton v-if="checkedDetailGroups.length > 0"
+						type="tertiary"
+						:aria-label="t('mediadc', 'Uncheck selected')"
+						@click="_deselectAllGroups((!filtered) ? details : detailsFiltered)">
+						<template #icon>
+							<MinusBoxOutline :size="20" />
+						</template>
+						{{ t('mediadc', 'Uncheck selected') }}
+					</NcButton>
 					<NcButton v-if="checkedDetailGroups.length > 0"
 						v-tooltip="{content: t('mediadc', 'Delete all files except the largest one'), placement: 'top'}"
 						type="tertiary"
@@ -96,47 +122,15 @@
 					</NcButton>
 					<div v-if="checkedDetailGroups.length > 0" class="batch-editing">
 						{{ n('mediadc', 'Batch actions for %n group', 'Batch actions for %n groups', checkedDetailGroups.length) }}
-						<NcActions placement="top" style="margin-left: 5px;">
-							<template v-if="!filtered">
-								<NcActionButton @click="selectAllGroups">
-									<template #icon>
-										<CheckAll :size="20" />
-									</template>
-									{{ checkedDetailGroups.length === details.length ? t('mediadc', 'Deselect all') : t('mediadc', 'Select all') }}
-								</NcActionButton>
-								<NcActionButton v-if="details.length > itemsPerPage" @click="selectAllGroupsOnPage">
-									<template #icon>
-										<CheckUnderline :size="20" />
-									</template>
-									{{ checkedDetailGroupsIntersect.length === paginatedDetails[page].length || checkedDetailGroupsIntersect.length === paginatedSortedDetails[page].length ? t('mediadc', 'Deselect all on page') : t('mediadc', 'Select all on page') }}
-								</NcActionButton>
+						<NcButton v-tooltip="{content: t('mediadc', 'Mark all files in group as resolved'), placement: 'top'}"
+							type="tertiary"
+							:aria-label="n('mediadc', 'Remove group', 'Remove groups', checkedDetailGroups.length)"
+							@click="removeCheckedGroups">
+							<template #icon>
+								<span class="icon-close" />
 							</template>
-							<template v-else>
-								<NcActionButton @click="selectAllGroups">
-									<template #icon>
-										<CheckAll :size="20" />
-									</template>
-									{{ checkedDetailGroups.length === detailsFiltered.length ? t('mediadc', 'Deselect all') : t('mediadc', 'Select all') }}
-								</NcActionButton>
-								<NcActionButton v-if="detailsFiltered.length > itemsPerPage" @click="selectAllGroupsOnPage">
-									<template #icon>
-										<CheckUnderline :size="20" />
-									</template>
-									{{ checkedDetailGroupsIntersect.length === paginatedDetailsFiltered[page].length ? t('mediadc', 'Deselect all on page') : t('mediadc', 'Select all on page') }}
-								</NcActionButton>
-							</template>
-							<NcActionButton v-if="checkedDetailGroups.length > 0" @click="_deselectAllGroups((!filtered) ? details : detailsFiltered)">
-								<template #icon>
-									<MinusBoxOutline :size="20" />
-								</template>
-								{{ t('mediadc', 'Uncheck selected') }}
-							</NcActionButton>
-							<NcActionButton v-tooltip="{content: t('mediadc', 'Mark all files in group as resolved'), placement: 'left'}"
-								icon="icon-close"
-								@click="removeCheckedGroups">
-								{{ n('mediadc', 'Remove group', 'Remove groups', checkedDetailGroups.length) }}
-							</NcActionButton>
-						</NcActions>
+							{{ n('mediadc', 'Remove group', 'Remove groups', checkedDetailGroups.length) }}
+						</NcButton>
 					</div>
 				</div>
 			</div>
@@ -196,8 +190,6 @@ import { subscribe, unsubscribe, emit } from '@nextcloud/event-bus'
 import {
 	NcCheckboxRadioSwitch,
 	NcButton,
-	NcActions,
-	NcActionButton,
 	NcLoadingIcon,
 } from '@nextcloud/vue'
 import MinusBoxOutline from 'vue-material-design-icons/MinusBoxOutline.vue'
@@ -217,8 +209,6 @@ export default {
 		DetailsListItem,
 		NcCheckboxRadioSwitch,
 		NcButton,
-		NcActions,
-		NcActionButton,
 		Pagination,
 		MinusBoxOutline,
 		CheckAll,
@@ -230,7 +220,6 @@ export default {
 			page: 0,
 			filterId: null,
 			checkedDetailGroups: [],
-			batchActionsOpened: false,
 			sortGroups: true,
 			batchDeleting: false,
 		}
