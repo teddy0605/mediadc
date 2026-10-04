@@ -20,6 +20,9 @@ maintained continuation of MediaDC by [teddy0605](https://github.com/teddy0605).
   [issues](https://github.com/teddy0605/mediadc/issues).
 - The app is not published on the Nextcloud App Store under this maintainer yet, so it is
   installed manually (see [Installation](#installation)).
+- Documentation still lives in the upstream
+  [wiki](https://github.com/cloud-py-api/mediadc/wiki) until this fork has its own docs. Most
+  of it still applies; this README takes precedence where they differ.
 
 ## What MediaDC does
 
