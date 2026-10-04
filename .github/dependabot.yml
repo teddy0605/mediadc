@@ -1,7 +1,8 @@
 # Dependabot opens pull requests when dependencies have new versions.
 # - cooldown: wait 7 days after a release before proposing it, so a compromised or broken
 #   release is usually caught (and pulled) by others first. Security fixes ignore cooldown.
-# - groups: one PR per ecosystem instead of one PR per package.
+# - groups: one PR per ecosystem instead of one PR per package, and one grouped PR for
+#   security updates (applies-to: security-updates) instead of one PR per advisory.
 # Review the diff/changelog of every bump before merging, especially for actions.
 version: 2
 updates:
@@ -26,7 +27,12 @@ updates:
     cooldown:
       default-days: 7
     groups:
+      npm-security:
+        applies-to: security-updates
+        patterns: ["*"]
       npm-minor-patch:
+        applies-to: version-updates
+        patterns: ["*"]
         update-types: [minor, patch]
 
   # Python: the worker's requirements.txt and the CI tools in .github/ci-requirements.txt.
@@ -39,5 +45,9 @@ updates:
     cooldown:
       default-days: 7
     groups:
+      pip-security:
+        applies-to: security-updates
+        patterns: ["*"]
       pip:
+        applies-to: version-updates
         patterns: ["*"]
