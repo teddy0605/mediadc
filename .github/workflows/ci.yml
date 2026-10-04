@@ -100,15 +100,21 @@ jobs:
         run: '"$RUNNER_TEMP/venv/bin/ruff" check --select E9,F63,F7,F82 --output-format github .'
       - name: Byte-compile
         run: '"$RUNNER_TEMP/venv/bin/python" -m compileall -q main.py python'
-      # Smoke test without a Nextcloud server: the NC_* variables stand in for occ, and
-      # --test hashes two sample images with every algorithm (numpy, scipy, pillow, pi-heif).
+      # Smoke test without a Nextcloud server: the NC_* variables stand in for `occ`
+      # (dummy values, an empty SQLite DB), and --test hashes two sample images with every
+      # algorithm (numpy, scipy, pywavelets, pillow, pi-heif). The "no such table" errors
+      # logged at import time are expected: the DB is empty.
       - name: Worker smoke test
         env:
           NC_dbtype: sqlite3
+          NC_dbname: ci
+          NC_dbuser: ci
+          NC_dbpassword: ci
+          NC_dbhost: localhost
           NC_datadirectory: ${{ runner.temp }}
         run: |
           "$RUNNER_TEMP/venv/bin/python" main.py --info
-          "$RUNNER_TEMP/venv/bin/python" main.py --test tests/cat.png tests/cat.hif
+          "$RUNNER_TEMP/venv/bin/python" main.py --test tests/cat.png --test tests/cat.hif
 
   zizmor:
     name: Workflow security (zizmor)
