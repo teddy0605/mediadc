@@ -79,14 +79,20 @@ maintained continuation of MediaDC by [teddy0605](https://github.com/teddy0605).
 MediaDC is installed manually into an apps directory (for example `custom_apps/` in the
 official Docker image, or `apps/`).
 
-1. Get the source. The repository includes the built frontend in `js/`, so no npm build is
-   needed:
+1. Download a release from the [releases page](https://github.com/teddy0605/mediadc/releases),
+   verify it and extract it into the apps directory. Every release tarball is built by the
+   release workflow from the tagged source and signed with a GitHub build provenance
+   attestation:
    ```bash
-   cd /path/to/nextcloud/custom_apps
-   git clone https://github.com/teddy0605/mediadc.git mediadc
-   chown -R www-data:www-data mediadc
+   V=0.6.7
+   gh release download "v$V" -R teddy0605/mediadc -p "mediadc-$V.tar.gz" -p SHA256SUMS
+   sha256sum -c SHA256SUMS
+   gh attestation verify "mediadc-$V.tar.gz" -R teddy0605/mediadc
+   tar -xzf "mediadc-$V.tar.gz" -C /path/to/nextcloud/custom_apps   # creates mediadc/
+   chown -R www-data:www-data /path/to/nextcloud/custom_apps/mediadc
    ```
-   Do not copy a development `node_modules/` directory into the Nextcloud app directory.
+   Do not install if either check fails. The git repository contains only the source (no
+   built `js/`), so a plain `git clone` needs a frontend build first (see Development).
 2. Enable the app:
    ```bash
    sudo -u www-data php /path/to/nextcloud/occ app:enable mediadc
@@ -109,8 +115,9 @@ official Docker image, or `apps/`).
 
 ### Upgrading
 
-Replace the app files (or `git pull`), keep MediaDC's app data directory (it holds task
-settings and results), then run:
+Verify the new release tarball as above and replace the app directory with its content
+(keep MediaDC's app data directory: it holds task settings and results),
+then run:
 
 ```bash
 sudo -u www-data php occ upgrade --no-interaction
@@ -122,7 +129,9 @@ trigger the Python environment setup.
 
 ## Development
 
-See [DEVELOP.md](DEVELOP.md). Frontend: `npm ci`, then `npm run build` (output in `js/`).
+See [DEVELOP.md](DEVELOP.md). Frontend: `npm ci`, then `npm run build` (output in `js/`, not
+committed). Releases: push a `vX.Y.Z` tag matching `appinfo/info.xml`; the release workflow
+builds, packages and attests the tarball.
 PHP checks: `composer lint`, `composer cs:check`, `composer psalm`, `composer test:unit`.
 
 ## Credits
