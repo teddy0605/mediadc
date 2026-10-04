@@ -71,11 +71,11 @@ jobs:
       # --ignore-scripts: dependencies' install scripts do not run (smaller supply-chain risk).
       - run: npm ci --ignore-scripts --no-audit --no-fund
       - run: npm run lint
+      # js/ is not committed (source-only repo); releases are built by release.yml.
       - run: npm run build
-      # js/ is committed so the app installs straight from git. The build is deterministic,
-      # so a difference here means src/ changed without rebuilding and committing js/.
-      - name: Committed js/ matches the build
-        run: git diff --exit-code --stat -- js/
+      # Same packaging as release.yml, so a broken package shows up before a tag is pushed.
+      - name: Package (dry run)
+        run: .github/scripts/package-release.sh "$RUNNER_TEMP/dist"
 
   python:
     name: Python worker

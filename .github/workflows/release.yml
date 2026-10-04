@@ -1,0 +1,106 @@
+# Release workflow: builds the app tarball from a pushed version tag, attests it and
+# publishes it as a GitHub release.
+#
+# Security notes (see also ci.yml):
+# - Runs only for pushed tags `v*` (only the owner can push tags). No workflow_dispatch
+#   inputs, no pull_request_target.
+# - `permissions: {}` by default. The build job (which runs npm) only gets `contents: read`;
+#   the release job gets write/OIDC rights but runs no third-party code: it only downloads
+#   the build artifact, attests it (GitHub's own action) and calls `gh release create`.
+# - No dependency cache (a poisoned cache must not reach a release build).
+# - The tag is passed through `env:`, never interpolated into scripts.
+# - Verify a release before installing it:
+#     sha256sum -c SHA256SUMS
+#     gh attestation verify mediadc-X.Y.Z.tar.gz -R teddy0605/mediadc
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build and package
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.ref }}
+          persist-credentials: false
+      - name: Tag matches the app version
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          v="$(python3 -c 'import xml.etree.ElementTree as E; print(E.parse("appinfo/info.xml").getroot().findtext("version").strip())')"
+          pv="$(python3 -c 'import re; print(re.search(r"__version__ = \"([^\"]+)\"", open("python/_version.py").read()).group(1))')"
+          nv="$(python3 -c 'import json; print(json.load(open("package.json"))["version"])')"
+          echo "info.xml=$v python=$pv package.json=$nv"
+          if [ "$TAG" != "v$v" ] || [ "$pv" != "$v" ] || [ "$nv" != "$v" ]; then
+            echo "Tag does not match the version in appinfo/info.xml, python/_version.py and package.json" >&2
+            exit 1
+          fi
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "26"
+          package-manager-cache: false
+      # The build does not need any dependency install script.
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - run: npm run build
+      - name: Package
+        run: .github/scripts/package-release.sh "$RUNNER_TEMP/dist"
+      - name: Release notes from CHANGELOG.md
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/notes"
+          awk -v v="${TAG#v}" '
+            index($0, "## [" v " ") == 1 || index($0, "## [" v "]") == 1 { on = 1; next }
+            on && /^## \[/ { exit }
+            on { print }' CHANGELOG.md > "$RUNNER_TEMP/notes/notes.md"
+          if ! grep -q '[^[:space:]]' "$RUNNER_TEMP/notes/notes.md"; then
+            echo "See CHANGELOG.md." > "$RUNNER_TEMP/notes/notes.md"
+          fi
+          cp "$RUNNER_TEMP/notes/notes.md" "$RUNNER_TEMP/dist/"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: release
+          path: ${{ runner.temp }}/dist/
+          if-no-files-found: error
+          retention-days: 7
+
+  release:
+    name: Attest and publish
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write # create the release
+      id-token: write # OIDC token for the Sigstore signing certificate
+      attestations: write # store the attestation
+    steps:
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: release
+          path: dist
+      - name: Check the checksums
+        run: cd dist && sha256sum -c SHA256SUMS
+      - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: dist/*.tar.gz
+      - name: Create the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+          REPO: ${{ github.repository }}
+        run: |
+          gh release create "$TAG" dist/*.tar.gz dist/SHA256SUMS \
+            -R "$REPO" --verify-tag --title "$TAG" --notes-file dist/notes.md
