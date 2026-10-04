@@ -1,107 +1,141 @@
-# Nextcloud MediaDC
+# Nextcloud MediaDC (maintained fork)
 
-> Community-maintained fork — Nextcloud 34 is the primary supported target.
+**Find duplicate and similar photos and videos in Nextcloud, and free up storage space.**
 
-**📸📹 Collect photo and video duplicates to save your cloud storage space**
+![Nextcloud 34 | 35](https://img.shields.io/badge/Nextcloud-34%20%7C%2035-0082c9)
+![License: AGPL-3.0-or-later](https://img.shields.io/badge/license-AGPL--3.0--or--later-blue)
 
----
+## Maintained fork
 
-The [original MediaDC](https://github.com/cloud-py-api/mediadc) by Andrey Borysenko and Alexander Piskun has been archived. This actively maintained fork is available at [teddy0605/mediadc](https://github.com/teddy0605/mediadc) and continues maintenance for current Nextcloud versions.
+The original project, [cloud-py-api/mediadc](https://github.com/cloud-py-api/mediadc),
+is archived and no longer receives updates. Its companion app
+[cloud-py-api/cloud_py_api](https://github.com/cloud-py-api/cloud_py_api) is archived too.
 
-## Why is this so awesome?
+This repository, [teddy0605/mediadc](https://github.com/teddy0605/mediadc), is an actively
+maintained continuation of MediaDC by [teddy0605](https://github.com/teddy0605).
 
-* **♻ Detects similar and duplicate photos/videos with different resolutions, sizes and formats**
-* **💡 Easily saves your cloud storage space and time for sorting**
-* **⚙ Flexible configuration** — hashing algorithms, similarity threshold, hash size
-* **🚀 Zero-setup** — Python environment auto-configured during app enable, no manual steps
-* **🗄️ All databases supported** — SQLite, MySQL/MariaDB, PostgreSQL
+- Works on **Nextcloud 34 and 35** (`appinfo/info.xml` allows 30 to 35; 34 and 35 are the
+  versions tested by the maintainer).
+- Bug reports and pull requests are welcome in this repository's
+  [issues](https://github.com/teddy0605/mediadc/issues).
+- The app is not published on the Nextcloud App Store under this maintainer yet, so it is
+  installed manually (see [Installation](#installation)).
 
-## 🚀 Installation
+## What MediaDC does
 
-### Fresh install (Nextcloud 30–34)
+- Detects duplicate and visually similar photos and videos, even across different
+  resolutions, sizes and formats (JPEG, PNG, TIFF, BMP, GIF, HEIC/HEIF, CR2 and more; any
+  video format supported by ffmpeg).
+- Configurable hashing algorithm (phash, dhash, whash, average), hash size and similarity
+  threshold.
+- Hashes are cached, so rescans only process new or changed files.
+- Works with external storages and with SQLite, MySQL/MariaDB and PostgreSQL.
 
-1. Download `mediadc.tar.gz` from the [latest release](https://github.com/teddy0605/mediadc/releases/latest)
-2. Extract to your Nextcloud `apps/` directory:
+## What's new compared to upstream 0.4.0
+
+- **Nextcloud 34 and 35 support**, including fixes for API changes in recent Nextcloud
+  releases (for example, notifications now throw `UnknownNotificationException`).
+- **No hard dependency on the archived cloud_py_api app for the Python worker.** The
+  `nc_py_api` Python module is bundled in `python/vendor/`, and the PHP helpers that used to
+  come from cloud_py_api are part of MediaDC.
+- **Automatic Python environment setup**: on first use, MediaDC creates a virtual environment
+  in the app directory and installs `requirements.txt`. Alternatively, set the
+  `MEDIADC_PYTHON` environment variable to the Python interpreter of an existing venv (useful
+  for Docker images).
+- **Docker friendly**: works with the official `nextcloud` image (detects `/var/www/html/occ`,
+  portable app paths, fixed worker logging and Python runtime selection).
+- **SQLite support** in addition to MySQL/MariaDB and PostgreSQL, plus object storage
+  support and improved settings migration.
+- **Photos album integration**: duplicate details show which Photos albums a file belongs
+  to, and a file can be added to an album from there. Skipped gracefully when the Photos app
+  is not available.
+- **Duplicate review UI improvements**: group actions (including delete) in a visible
+  toolbar above the duplicate groups, a working "select all" checkbox per group, and task
+  names in the recent tasks list.
+- **Reproducible Python dependencies**: `requirements.txt` pins tested versions (numpy, scipy,
+  pywavelets, Pillow 12, hexhamming, pymysql, pg8000, pi-heif), compatible with Python 3.13.
+- A health-check script, `scripts/setup-check.sh`.
+
+## Requirements
+
+- Nextcloud 34 or 35 (30 to 33 are allowed by `info.xml` but not tested by the maintainer).
+- PHP with `exec()` enabled, 64-bit.
+- Python 3.9 or later with `venv` support (`apt install python3-venv` on Debian/Ubuntu).
+  Tested with Python 3.13.
+- Python packages from [`requirements.txt`](requirements.txt). They are installed
+  automatically into the app's venv, or you install them yourself into the venv that
+  `MEDIADC_PYTHON` points to.
+- `ffmpeg` and `ffprobe`, only needed for video duplicate detection.
+- Optional: the maintained [cloud_py_api fork](https://github.com/teddy0605/cloud_py_api)
+  (Nextcloud 35 compatible). MediaDC runs without it; when it is installed and enabled, the
+  worker can also fetch files that are not directly readable on disk through the
+  `occ cloud_py_api:getfilecontents` command.
+
+## Installation
+
+MediaDC is installed manually into an apps directory (for example `custom_apps/` in the
+official Docker image, or `apps/`).
+
+1. Get the source. The repository includes the built frontend in `js/`, so no npm build is
+   needed:
    ```bash
-   tar xzf mediadc.tar.gz -C /path/to/nextcloud/apps/
+   cd /path/to/nextcloud/custom_apps
+   git clone https://github.com/teddy0605/mediadc.git mediadc
+   chown -R www-data:www-data mediadc
    ```
-3. Enable the app:
+   Do not copy a development `node_modules/` directory into the Nextcloud app directory.
+2. Enable the app:
    ```bash
    sudo -u www-data php /path/to/nextcloud/occ app:enable mediadc
    ```
-4. **Done!** The Python environment (venv + packages) will be set up during first enable when using the standard app layout.
+   If Nextcloud refuses because the app is not from the App Store or the version is not
+   listed as compatible, use:
+   ```bash
+   sudo -u www-data php /path/to/nextcloud/occ app:enable --force mediadc
+   ```
+   You can also add `mediadc` to the `app_install_overwrite` array in `config.php` so that it
+   stays enabled across Nextcloud upgrades.
+3. Optional, for Docker images: create a venv at build time, install `requirements.txt` into
+   it and set `MEDIADC_PYTHON=/path/to/venv/bin/python3` in the container environment.
+4. Check the installation:
+   ```bash
+   sudo -u www-data bash /path/to/nextcloud/custom_apps/mediadc/scripts/setup-check.sh /path/to/nextcloud
+   ```
+   It checks system dependencies, PHP, the Nextcloud status, the Python venv and packages, and
+   database connectivity, and runs an end-to-end smoke test.
 
-### Verify installation
+### Upgrading
 
-Run the built-in health check script:
+Replace the app files (or `git pull`), keep MediaDC's app data directory (it holds task
+settings and results), then run:
+
 ```bash
-sudo -u www-data bash /path/to/nextcloud/apps/mediadc/scripts/setup-check.sh /path/to/nextcloud
+sudo -u www-data php occ upgrade --no-interaction
 ```
 
-This checks: system deps, PHP, Nextcloud status, Python venv, all packages, DB connectivity, and runs an end-to-end smoke test.
+If you use `MEDIADC_PYTHON`, reinstall the requirements into that venv when
+`requirements.txt` changes. When upgrading from 0.4.x, disable and re-enable the app to
+trigger the Python environment setup.
 
-**Requirements:**
-- Nextcloud 30, 31, 32, 33, or 34
-- PHP 8.1 or later
-- Python 3.9 or later (with `venv` support — `apt install python3-venv` on Debian/Ubuntu if missing)
-- `ffmpeg` (optional — only needed for video duplicate detection)
+## Development
 
-### Upgrade from 0.4.x
-
-Disable and re-enable the app to trigger the auto-setup:
-```bash
-sudo -u www-data php occ app:disable mediadc
-sudo -u www-data php occ app:enable mediadc
-```
-
-For Docker deployments, rebuild the app image when `requirements.txt` or the
-Dockerfile changes, then copy this repository to the persistent
-`custom_apps/mediadc` directory. Run `php occ upgrade --no-interaction` after
-replacing the app files. Keep MediaDC's persistent app-data directory because
-it contains task settings and results.
-
-## Maintenance consolidation — 14 September 2026
-
-This fork was reviewed against both downstream forks:
-
-- [`ngurah-bagus-trisna/mediadc`](https://github.com/ngurah-bagus-trisna/mediadc)
-- [`marcbenedi/mediadc`](https://github.com/marcbenedi/mediadc)
-
-All relevant, compatible fixes and updates from that review were consolidated
-here, including the Nextcloud 34-compatible source-Python runtime,
-worker-startup and request-handling fixes, object-storage support, settings
-migration improvements, and official Nextcloud Docker compatibility. Redundant
-or Nextcloud-33-only changes were excluded. The Photos album integration from
-the Marc Benedi fork is included, with graceful handling when the Photos app or
-its internal album mapper is unavailable.
-
-Local compatibility fixes added in this pass:
-
-- Unknown MediaDC notifications now throw
-  `OCP\\Notification\\UnknownNotificationException`.
-- The bundled Python API detects `/var/www/html/occ` in the official Docker
-  image.
-- Pillow is compatible with the deployment image's Python 3.13 runtime.
-
-The reference deployment is being updated to MediaDC **0.6.5** on Nextcloud
-**34.0.4**.
-
-## What changed from the original
-
-| Original (0.4.0) | This fork (0.5.0+) |
-|---|---|
-| Requires `cloud_py_api` app installed | Self-contained — cloud_py_api vendored |
-| Manual Python venv + pip install | Auto-setup during app enable |
-| PostgreSQL & MySQL only | SQLite also supported |
-| Nextcloud 30–31 only | Nextcloud 30–34 |
-| Tasks stuck pending from UI | Fixed — async worker launches correctly |
-| Binary download mode | Source Python mode (simpler, no GitHub download) |
+See [DEVELOP.md](DEVELOP.md). Frontend: `npm ci`, then `npm run build` (output in `js/`).
+PHP checks: `composer lint`, `composer cs:check`, `composer psalm`, `composer test:unit`.
 
 ## Credits
 
-Original project by **[Andrey Borysenko](https://github.com/andrey18106)** and **[Alexander Piskun](https://github.com/bigcat88)**.
+- Original authors: **[Andrey Borysenko](https://github.com/andrey18106)** and
+  **[Alexander Piskun](https://github.com/bigcat88)** ([cloud-py-api](https://github.com/cloud-py-api)).
+  Their copyright notices are kept in the source files.
+- Downstream work merged into this fork (Nextcloud 34 source-Python runtime, worker and
+  request fixes, object storage, settings migration, Docker compatibility and the Photos
+  album integration) comes from these forks:
+  - [Marc Benedi](https://github.com/marcbenedi) ([marcbenedi/mediadc](https://github.com/marcbenedi/mediadc))
+  - [Ngurah Bagus Trisna](https://github.com/ngurah-bagus-trisna) ([ngurah-bagus-trisna/mediadc](https://github.com/ngurah-bagus-trisna/mediadc))
+- Image hashing is based on [imagehash](https://github.com/JohannesBuchner/imagehash) by
+  Johannes Buchner (vendored in `python/imagehash.py`).
+- Maintained by **[teddy0605](https://github.com/teddy0605)**.
 
-This fork is maintained by **[teddy0605](https://github.com/teddy0605)**.
+## License
 
-Downstream work reviewed from **[Ngurah Bagus Trisna](https://github.com/ngurah-bagus-trisna)**
-and **[Marc Benedi](https://github.com/marcbenedi)**.
+[AGPL-3.0-or-later](LICENSE), unchanged from the original project.
