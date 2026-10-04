@@ -8,9 +8,10 @@ Maintenance and security update of the maintained fork.
 
 ### Changed
 
-- Rebuilt the frontend with moment 2.31.0 (CVE-2026-17495) and axios 1.20.0 (axios and
-  form-data security advisories).
-- Updated development dependencies (brace-expansion, fast-uri, js-yaml) for security fixes.
+- Rebuilt the frontend with moment 2.31.0 (CVE-2026-17495), axios 1.20.0 (axios and
+  form-data security advisories) and dompurify 3.4.16; postcss 8.5.28 and nanoid 3.3.19.
+- Updated development dependencies (brace-expansion, fast-uri, js-yaml, immutable,
+  postcss-selector-parser, websocket-driver) for security fixes.
 - `python/_version.py` now follows the app version.
 
 ## [0.4.0 - 2024-10-21]
