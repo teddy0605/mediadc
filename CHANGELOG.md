@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.6.7 - 2026-10-04]
+
+Maintenance and security update of the maintained fork.
+
+### Changed
+
+- Rebuilt the frontend with moment 2.31.0 (CVE-2026-17495) and axios 1.20.0 (axios and
+  form-data security advisories).
+- Updated development dependencies (brace-expansion, fast-uri, js-yaml) for security fixes.
+- `python/_version.py` now follows the app version.
+
 ## [0.4.0 - 2024-10-21]
 
 Maintenance update. Update NC versions to support NC30+ only.
