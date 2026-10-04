@@ -1,0 +1,136 @@
+# Continuous integration for MediaDC.
+#
+# Security notes (see GitHub's "Security hardening for GitHub Actions"):
+# - Only `push` (to main) and `pull_request` triggers. Never `pull_request_target`:
+#   it runs fork PRs with a write token and secrets.
+# - Every `uses:` is pinned to a full commit SHA (tags can be moved; SHAs cannot).
+#   The comment after the SHA is the release it points to. Dependabot keeps them current.
+# - `permissions: {}` removes all GITHUB_TOKEN rights by default; each job asks only for
+#   what it needs (here: read the code).
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions: {}
+
+# A newer push to the same branch/PR cancels the older, still running build.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  php-lint:
+    name: PHP lint (${{ matrix.php }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        # Official PHP images, pinned by digest so the job is reproducible.
+        # To update: look up the new digest of the tag and replace it (manual).
+        include:
+          - php: "8.3"
+            image: php:8.3-cli@sha256:f1ed6d1fd0aa769ab94ca307b9deaf55fbc18434315b70e319cd79078515cd2b
+          - php: "8.4"
+            image: php:8.4-cli@sha256:0177c7589c0715b63e5343342a7c1f1887db759ad0b0d6ad3bb949938bba6b47
+          - php: "8.5"
+            image: php:8.5-cli@sha256:19642e172d3a542225225e202ddc2c11f67bdcbddf147b676c49338609b9290f
+    # The whole job runs inside the PHP container, so no third-party setup action is needed.
+    container:
+      image: ${{ matrix.image }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Do not leave the token in .git/config for later steps.
+          persist-credentials: false
+      - name: php -l on every PHP file
+        run: |
+          php --version
+          find . -name '*.php' -not -path './vendor/*' -not -path './node_modules/*' -print0 \
+            | xargs -0 -n1 php -l
+
+  frontend:
+    name: JS lint and build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "26"
+          cache: npm
+      # --ignore-scripts: dependencies' install scripts do not run (smaller supply-chain risk).
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - run: npm run lint
+      - run: npm run build
+      # js/ is committed so the app installs straight from git. The build is deterministic,
+      # so a difference here means src/ changed without rebuilding and committing js/.
+      - name: Committed js/ matches the build
+        run: git diff --exit-code --stat -- js/
+
+  python:
+    name: Python worker
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.13" # same as the Nextcloud Docker image the app runs in
+      - name: Install tools and worker requirements
+        run: |
+          python -m venv "$RUNNER_TEMP/venv"
+          "$RUNNER_TEMP/venv/bin/pip" install --disable-pip-version-check -q \
+            -r .github/ci-requirements.txt -r requirements.txt
+      # Only real errors fail the build: syntax errors and undefined names.
+      - name: ruff (errors only)
+        run: '"$RUNNER_TEMP/venv/bin/ruff" check --select E9,F63,F7,F82 --output-format github .'
+      - name: Byte-compile
+        run: '"$RUNNER_TEMP/venv/bin/python" -m compileall -q main.py python'
+      # Smoke test without a Nextcloud server: the NC_* variables stand in for occ, and
+      # --test hashes two sample images with every algorithm (numpy, scipy, pillow, pi-heif).
+      - name: Worker smoke test
+        env:
+          NC_dbtype: sqlite3
+          NC_datadirectory: ${{ runner.temp }}
+        run: |
+          "$RUNNER_TEMP/venv/bin/python" main.py --info
+          "$RUNNER_TEMP/venv/bin/python" main.py --test tests/cat.png tests/cat.hif
+
+  zizmor:
+    name: Workflow security (zizmor)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install zizmor
+        run: |
+          python3 -m venv "$RUNNER_TEMP/venv"
+          "$RUNNER_TEMP/venv/bin/pip" install --disable-pip-version-check -q -r .github/ci-requirements.txt
+      # zizmor audits the workflows themselves (injection, unpinned actions, excessive
+      # permissions, ...). The read-only token lets it check pins against GitHub.
+      - name: Report all findings
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: '"$RUNNER_TEMP/venv/bin/zizmor" --no-exit-codes .github/workflows'
+      - name: Fail on high-severity findings
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: '"$RUNNER_TEMP/venv/bin/zizmor" --min-severity high .github/workflows'

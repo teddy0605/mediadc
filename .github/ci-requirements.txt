@@ -1,0 +1,4 @@
+# Python tools used only by .github/workflows/ci.yml (not by the app).
+# Exact versions so every CI run uses the same tool; Dependabot proposes bumps.
+ruff==0.16.9
+zizmor==1.30.1

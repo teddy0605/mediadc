@@ -1,0 +1,43 @@
+# Dependabot opens pull requests when dependencies have new versions.
+# - cooldown: wait 7 days after a release before proposing it, so a compromised or broken
+#   release is usually caught (and pulled) by others first. Security fixes ignore cooldown.
+# - groups: one PR per ecosystem instead of one PR per package.
+# Review the diff/changelog of every bump before merging, especially for actions.
+version: 2
+updates:
+  # Keeps the SHA pins in .github/workflows/*.yml current.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 3
+    cooldown:
+      default-days: 7
+    groups:
+      github-actions:
+        patterns: ["*"]
+
+  # Frontend build dependencies (package.json / package-lock.json).
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 3
+    cooldown:
+      default-days: 7
+    groups:
+      npm-minor-patch:
+        update-types: [minor, patch]
+
+  # Python: the worker's requirements.txt and the CI tools in .github/ci-requirements.txt.
+  # Worker pins are verified on the Nextcloud Docker image; test before merging.
+  - package-ecosystem: pip
+    directories: [/, /.github]
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 3
+    cooldown:
+      default-days: 7
+    groups:
+      pip:
+        patterns: ["*"]
