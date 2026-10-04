@@ -1,0 +1,4 @@
+contact_links:
+  - name: Report a security vulnerability
+    url: https://github.com/teddy0605/mediadc/security/advisories/new
+    about: Please report security issues privately, not as a public issue. See SECURITY.md.

@@ -1,0 +1,4 @@
+# Changes to these paths request a review from the listed owner.
+# /.github/ holds the workflows: changes there must always be reviewed by the maintainer.
+* @teddy0605
+/.github/ @teddy0605
