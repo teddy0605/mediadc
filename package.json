@@ -11,13 +11,13 @@
 		"media",
 		"collect"
 	],
-	"homepage": "https://github.com/andrey18106/mediadc",
+	"homepage": "https://github.com/teddy0605/mediadc",
 	"bugs": {
-		"url": "https://github.com/andrey18106/mediadc/issues"
+		"url": "https://github.com/teddy0605/mediadc/issues"
 	},
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/andrey18106/mediadc"
+		"url": "https://github.com/teddy0605/mediadc"
 	},
 	"license": "agpl",
 	"private": true,

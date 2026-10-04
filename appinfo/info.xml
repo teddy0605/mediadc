@@ -29,18 +29,18 @@ Quick start guide and further information in our [Wiki](https://github.com/cloud
 	</documentation>
 	<category>tools</category>
 	<category>multimedia</category>
-	<website>https://github.com/cloud-py-api/mediadc</website>
-	<bugs>https://github.com/cloud-py-api/mediadc/issues</bugs>
-	<repository type="git">https://github.com/cloud-py-api/mediadc.git</repository>
-	<screenshot>https://raw.githubusercontent.com/cloud-py-api/mediadc/main/screenshots/mediadc_home.png</screenshot>
-	<screenshot>https://raw.githubusercontent.com/cloud-py-api/mediadc/main/screenshots/mediadc_task_details_1.png</screenshot>
-	<screenshot>https://raw.githubusercontent.com/cloud-py-api/mediadc/main/screenshots/mediadc_task_details_2.png</screenshot>
-	<screenshot>https://raw.githubusercontent.com/cloud-py-api/mediadc/main/screenshots/mediadc_task_details_3.png</screenshot>
-	<screenshot>https://raw.githubusercontent.com/cloud-py-api/mediadc/main/screenshots/mediadc_resolved.png</screenshot>
-	<screenshot>https://raw.githubusercontent.com/cloud-py-api/mediadc/main/screenshots/mediadc_admin_settings_1.png</screenshot>
-	<screenshot>https://raw.githubusercontent.com/cloud-py-api/mediadc/main/screenshots/mediadc_admin_settings_2.png</screenshot>
-	<screenshot>https://raw.githubusercontent.com/cloud-py-api/mediadc/main/screenshots/mediadc_admin_settings_3.png</screenshot>
-	<screenshot>https://raw.githubusercontent.com/cloud-py-api/mediadc/main/screenshots/mediadc_filesplugin.png</screenshot>
+	<website>https://github.com/teddy0605/mediadc</website>
+	<bugs>https://github.com/teddy0605/mediadc/issues</bugs>
+	<repository type="git">https://github.com/teddy0605/mediadc.git</repository>
+	<screenshot>https://raw.githubusercontent.com/teddy0605/mediadc/main/screenshots/mediadc_home.png</screenshot>
+	<screenshot>https://raw.githubusercontent.com/teddy0605/mediadc/main/screenshots/mediadc_task_details_1.png</screenshot>
+	<screenshot>https://raw.githubusercontent.com/teddy0605/mediadc/main/screenshots/mediadc_task_details_2.png</screenshot>
+	<screenshot>https://raw.githubusercontent.com/teddy0605/mediadc/main/screenshots/mediadc_task_details_3.png</screenshot>
+	<screenshot>https://raw.githubusercontent.com/teddy0605/mediadc/main/screenshots/mediadc_resolved.png</screenshot>
+	<screenshot>https://raw.githubusercontent.com/teddy0605/mediadc/main/screenshots/mediadc_admin_settings_1.png</screenshot>
+	<screenshot>https://raw.githubusercontent.com/teddy0605/mediadc/main/screenshots/mediadc_admin_settings_2.png</screenshot>
+	<screenshot>https://raw.githubusercontent.com/teddy0605/mediadc/main/screenshots/mediadc_admin_settings_3.png</screenshot>
+	<screenshot>https://raw.githubusercontent.com/teddy0605/mediadc/main/screenshots/mediadc_filesplugin.png</screenshot>
 	<dependencies>
 		<php min-version="7.4" min-int-size="64" />
 		<nextcloud min-version="30" max-version="35" />
