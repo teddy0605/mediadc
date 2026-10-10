@@ -1,0 +1,41 @@
+# Auto-merge for Dependabot npm patch/minor updates.
+#
+# - Runs on `pull_request` (never `pull_request_target`). For Dependabot PRs GitHub grants
+#   the GITHUB_TOKEN only the permissions listed below and no secrets.
+# - It only *enables* auto-merge. GitHub merges the PR once every required check of the
+#   "protect main" ruleset passes (CI incl. "Supply chain"); a red check leaves it open.
+# - npm patch/minor only. Major bumps, pip (the homelab image must be rebuilt) and
+#   github-actions (review the action diff first) stay open for the maintainer.
+# - Checks the PR author, not github.actor (which a re-run by someone else changes).
+name: Dependabot auto-merge
+
+on:
+  pull_request:
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  auto-merge:
+    name: Enable auto-merge
+    if: github.event.pull_request.user.login == 'dependabot[bot]' && github.repository == 'teddy0605/mediadc'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - id: meta
+        uses: dependabot/fetch-metadata@25dd0e34f4fe68f24cc83900b1fe3fe149efef98 # v3.1.0
+      - name: Enable auto-merge (squash)
+        if: >-
+          steps.meta.outputs.package-ecosystem == 'npm_and_yarn' &&
+          (steps.meta.outputs.update-type == 'version-update:semver-patch' ||
+           steps.meta.outputs.update-type == 'version-update:semver-minor')
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+        run: gh pr merge --auto --squash "$PR_URL"

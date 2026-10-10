@@ -70,6 +70,8 @@ jobs:
           cache: npm
       # --ignore-scripts: dependencies' install scripts do not run (smaller supply-chain risk).
       - run: npm ci --ignore-scripts --no-audit --no-fund
+      # Registry signatures and provenance of every installed package.
+      - run: npm audit signatures
       - run: npm run lint
       # js/ is not committed (source-only repo); releases are built by release.yml.
       - run: npm run build
@@ -115,6 +117,30 @@ jobs:
         run: |
           "$RUNNER_TEMP/venv/bin/python" main.py --info
           "$RUNNER_TEMP/venv/bin/python" main.py --test tests/cat.png --test tests/cat.hif
+
+  # Pull requests only: what a dependency change brings in. Dependabot PRs are auto-merged
+  # only when this job passes (see dependabot-auto-merge.yml and the "protect main" ruleset).
+  supply-chain:
+    name: Supply chain
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      # Fails on known high or critical vulnerabilities in dependencies the PR adds or
+      # changes. Uses GitHub's dependency graph.
+      - uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
+        with:
+          fail-on-severity: high
+      - name: package-lock.json checks
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: .github/scripts/check-lockfile.sh "$BASE_SHA"
 
   zizmor:
     name: Workflow security (zizmor)
