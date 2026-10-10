@@ -118,6 +118,41 @@ jobs:
           "$RUNNER_TEMP/venv/bin/python" main.py --info
           "$RUNNER_TEMP/venv/bin/python" main.py --test tests/cat.png --test tests/cat.hif
 
+  # The app in a real Nextcloud (official image): install both app tarballs, enable them,
+  # load the pages and bundles, run a duplicate scan. See .github/scripts/nextcloud-smoke.sh.
+  nextcloud:
+    name: Nextcloud integration
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: read
+    env:
+      # cloud_py_api release the app is tested with (installed from its attested tarball).
+      CLOUD_PY_API_TAG: v0.2.2
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "26"
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - run: npm run build
+      - name: Package MediaDC
+        run: .github/scripts/package-release.sh "$RUNNER_TEMP/mediadc"
+      - name: Download and verify cloud_py_api
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download "$CLOUD_PY_API_TAG" -R teddy0605/cloud_py_api -D "$RUNNER_TEMP/cloud_py_api"
+          (cd "$RUNNER_TEMP/cloud_py_api" && sha256sum -c SHA256SUMS)
+          gh attestation verify "$RUNNER_TEMP"/cloud_py_api/cloud_py_api-*.tar.gz -R teddy0605/cloud_py_api \
+            --signer-workflow teddy0605/cloud_py_api/.github/workflows/release.yml \
+            --source-ref "refs/tags/$CLOUD_PY_API_TAG"
+      - name: Smoke test in Nextcloud
+        run: .github/scripts/nextcloud-smoke.sh "$RUNNER_TEMP/mediadc" "$RUNNER_TEMP/cloud_py_api"
+
   # Pull requests only: what a dependency change brings in. Dependabot PRs are auto-merged
   # only when this job passes (see dependabot-auto-merge.yml and the "protect main" ruleset).
   supply-chain:
