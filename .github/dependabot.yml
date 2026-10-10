@@ -28,6 +28,11 @@ updates:
     open-pull-requests-limit: 3
     cooldown:
       default-days: 7
+    # @nextcloud/eslint-config 9 needs ESLint 10 and a flat config, and its stricter rules
+    # flag hundreds of lines in src/. Migrate deliberately, not through a Dependabot PR.
+    ignore:
+      - dependency-name: "@nextcloud/eslint-config"
+        update-types: ["version-update:semver-major"]
     groups:
       npm-security:
         applies-to: security-updates
