@@ -1,11 +1,13 @@
-# Auto-merge for Dependabot npm patch/minor updates.
+# Auto-merge for Dependabot updates once every required check is green.
 #
 # - Runs on `pull_request` (never `pull_request_target`). For Dependabot PRs GitHub grants
 #   the GITHUB_TOKEN only the permissions listed below and no secrets.
 # - It only *enables* auto-merge. GitHub merges the PR once every required check of the
-#   "protect main" ruleset passes (CI incl. "Supply chain"); a red check leaves it open.
-# - npm patch/minor only. Major bumps, pip (the homelab image must be rebuilt) and
-#   github-actions (review the action diff first) stay open for the maintainer.
+#   "protect main" ruleset passes (CI incl. "Supply chain" and "Nextcloud integration");
+#   a red check leaves the PR open.
+# - npm and pip: any update, majors included (the Nextcloud integration test gates them).
+#   github-actions: only when every updated action is GitHub-owned (actions/*, github/*,
+#   dependabot/*); third-party action bumps stay open for review.
 # - Checks the PR author, not github.actor (which a re-run by someone else changes).
 name: Dependabot auto-merge
 
@@ -31,11 +33,23 @@ jobs:
       - id: meta
         uses: dependabot/fetch-metadata@25dd0e34f4fe68f24cc83900b1fe3fe149efef98 # v3.1.0
       - name: Enable auto-merge (squash)
-        if: >-
-          steps.meta.outputs.package-ecosystem == 'npm_and_yarn' &&
-          (steps.meta.outputs.update-type == 'version-update:semver-patch' ||
-           steps.meta.outputs.update-type == 'version-update:semver-minor')
         env:
           GH_TOKEN: ${{ github.token }}
           PR_URL: ${{ github.event.pull_request.html_url }}
-        run: gh pr merge --auto --squash "$PR_URL"
+          ECOSYSTEM: ${{ steps.meta.outputs.package-ecosystem }}
+          DEPS: ${{ steps.meta.outputs.dependency-names }}
+        run: |
+          case "$ECOSYSTEM" in
+            npm_and_yarn|pip) ;;
+            github_actions)
+              if printf '%s\n' "$DEPS" | tr ',' '\n' | sed 's/^ *//' | grep -vqE '^(actions|github|dependabot)/'; then
+                echo "Not only GitHub-owned actions ($DEPS): left open for review."
+                exit 0
+              fi
+              ;;
+            *)
+              echo "Ecosystem $ECOSYSTEM is not auto-merged."
+              exit 0
+              ;;
+          esac
+          gh pr merge --auto --squash "$PR_URL"
