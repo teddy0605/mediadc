@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# End-to-end test of MediaDC in a real Nextcloud: the official Nextcloud image (SQLite),
+# End-to-end test of MediaDC in a real Nextcloud: the official Nextcloud image with MariaDB
+# (MediaDC supports only MySQL/MariaDB and PostgreSQL, not SQLite),
 # with the MediaDC tarball of this commit and the cloud_py_api release tarball installed
 # the same way a server installs them. Checks that both apps enable, the pages and JS
 # bundles load, the Python worker starts, and a duplicate scan finds the test duplicates.
@@ -11,6 +12,7 @@ set -euo pipefail
 
 # Same Nextcloud release the app targets. To update: new tag + its digest (manual).
 NC_IMAGE=nextcloud:35.0.1-apache@sha256:b1ae671e9815401b0e837b19b9c778e89887721d67f0c8f9d34aa1d27a9a208f
+DB_IMAGE=mariadb:11.4.13@sha256:1292844148b311e4ed4300022a996d39083f415a963e970cf47cad1b3b18e3a6
 mediadc_dist="${1:?usage: $0 <mediadc-dist-dir> <cloud_py_api-dist-dir>}"
 cpa_dist="${2:?usage: $0 <mediadc-dist-dir> <cloud_py_api-dist-dir>}"
 
@@ -18,6 +20,7 @@ C=nextcloud-ci
 BASE=http://localhost:8080
 ADMIN=admin
 PASS="$(python3 -c 'import secrets; print(secrets.token_hex(16))')" # throwaway, this run only
+DBPASS="$(python3 -c 'import secrets; print(secrets.token_hex(16))')"
 fails=0
 
 ok()  { echo "  ok   $*"; }
@@ -37,9 +40,21 @@ dump_logs() {
 }
 trap 'rc=$?; [ "$rc" -eq 0 ] || dump_logs' EXIT
 
+echo "Start MariaDB"
+docker network create nextcloud-ci >/dev/null
+docker run -d --name nextcloud-ci-db --network nextcloud-ci \
+  -e MARIADB_RANDOM_ROOT_PASSWORD=1 -e MARIADB_DATABASE=nextcloud -e MARIADB_USER=nextcloud -e MARIADB_PASSWORD="$DBPASS" \
+  "$DB_IMAGE" --transaction-isolation=READ-COMMITTED --binlog-format=ROW >/dev/null
+for _ in $(seq 1 60); do
+  docker exec nextcloud-ci-db healthcheck.sh --connect --innodb_initialized >/dev/null 2>&1 && break
+  sleep 2
+done
+docker exec nextcloud-ci-db healthcheck.sh --connect --innodb_initialized >/dev/null || { docker logs --tail=30 nextcloud-ci-db; echo "::error::MariaDB did not start"; exit 1; }
+
 echo "Start Nextcloud"
-docker run -d --name "$C" -p 127.0.0.1:8080:80 \
-  -e SQLITE_DATABASE=nextcloud -e NEXTCLOUD_ADMIN_USER="$ADMIN" -e NEXTCLOUD_ADMIN_PASSWORD="$PASS" \
+docker run -d --name "$C" --network nextcloud-ci -p 127.0.0.1:8080:80 \
+  -e MYSQL_HOST=nextcloud-ci-db -e MYSQL_DATABASE=nextcloud -e MYSQL_USER=nextcloud -e MYSQL_PASSWORD="$DBPASS" \
+  -e NEXTCLOUD_ADMIN_USER="$ADMIN" -e NEXTCLOUD_ADMIN_PASSWORD="$PASS" \
   -e NEXTCLOUD_TRUSTED_DOMAINS=localhost -e MEDIADC_PYTHON=/opt/mediadc-venv/bin/python3 \
   "$NC_IMAGE" >/dev/null
 for _ in $(seq 1 90); do

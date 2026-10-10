@@ -118,7 +118,7 @@ jobs:
           "$RUNNER_TEMP/venv/bin/python" main.py --info
           "$RUNNER_TEMP/venv/bin/python" main.py --test tests/cat.png --test tests/cat.hif
 
-  # The app in a real Nextcloud (official image): install both app tarballs, enable them,
+  # The app in a real Nextcloud (official image + MariaDB): install both app tarballs, enable them,
   # load the pages and bundles, run a duplicate scan. See .github/scripts/nextcloud-smoke.sh.
   nextcloud:
     name: Nextcloud integration
