@@ -5,7 +5,7 @@
 # - It only *enables* auto-merge. GitHub merges the PR once every required check of the
 #   "protect main" ruleset passes (CI incl. "Supply chain" and "Nextcloud integration");
 #   a red check leaves the PR open.
-# - npm and pip: any update, majors included (the Nextcloud integration test gates them).
+# - npm, pip and composer: any update, majors included (the Nextcloud integration test gates them).
 #   github-actions: only when every updated action is GitHub-owned (actions/*, github/*,
 #   dependabot/*); third-party action bumps stay open for review.
 # - Checks the PR author, not github.actor (which a re-run by someone else changes).
@@ -40,7 +40,7 @@ jobs:
           DEPS: ${{ steps.meta.outputs.dependency-names }}
         run: |
           case "$ECOSYSTEM" in
-            npm_and_yarn|pip) ;;
+            npm_and_yarn|pip|composer) ;;
             github_actions)
               if printf '%s\n' "$DEPS" | tr ',' '\n' | sed 's/^ *//' | grep -vqE '^(actions|github|dependabot)/'; then
                 echo "Not only GitHub-owned actions ($DEPS): left open for review."
