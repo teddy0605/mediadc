@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.6.8 - 2026-11-02]
+
+Dependency and security update.
+
+### Changed
+
+- Python worker: pillow 13.0.0.
+- Frontend rebuilt with dompurify 3.4.17, follow-redirects 1.16.2, postcss-selector-parser 6.1.5,
+  vue 3.5.43 and source-map-js 1.2.2.
+- Build and dev tooling: shell-quote 1.12.0, qs 6.17.1, fast-uri 3.1.9, launch-editor 2.14.2.
+- CI: Nextcloud integration test; green Dependabot updates merge automatically after
+  supply-chain checks.
+
 ## [0.6.7 - 2026-10-04]
 
 Maintenance and security update of the maintained fork.
